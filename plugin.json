@@ -1,0 +1,35 @@
+{
+  "name": "ravna-workflows",
+  "version": "1.0.0",
+  "description": "Agentic backend for Ravna business operations — prospect research, CRM, newsletters, consultation prep, curriculum generation, client onboarding, pipeline intelligence",
+  "author": "Ugur Üzel",
+  "mcpServers": {
+    "brave-search": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-brave-search"],
+      "env": {
+        "BRAVE_SEARCH_API_KEY": "${BRAVE_SEARCH_API_KEY}"
+      }
+    },
+    "puppeteer": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-puppeteer"],
+      "env": {
+        "LOG_LEVEL": "info"
+      }
+    },
+    "resend": {
+      "command": "npx",
+      "args": ["-y", "resend-mcp"],
+      "env": {
+        "RESEND_API_KEY": "${RESEND_API_KEY}"
+      }
+    }
+  },
+  "hooks": {
+    "SessionStart": {
+      "command": "bash",
+      "args": ["-c", "[ -f .env.local ] && set -a && source .env.local && set +a && echo 'Environment loaded from .env.local'"]
+    }
+  }
+}

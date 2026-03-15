@@ -1,0 +1,65 @@
+{
+  "skill": "prospect-research",
+  "test_cases": [
+    {
+      "id": "eval-1",
+      "name": "Medical device distributor discovery (English)",
+      "input": {
+        "keyword": "medical device distributor",
+        "city": "Istanbul",
+        "count": 2,
+        "industry": "healthcare"
+      },
+      "expected_outcome": "Discovers 2-3 direct company websites, deduplicates against DB, returns ≥1 qualified prospect with score ≥6",
+      "eval_criteria": [
+        "Discovery returns only direct company websites (filters out directories)",
+        "Dedup works (no duplicate URLs inserted)",
+        "Prospect inserted with cold_ready status",
+        "Email draft is well-formed Turkish",
+        "Telegram notification sent successfully"
+      ]
+    },
+    {
+      "id": "eval-2",
+      "name": "Turkish input — accounting firms (Turkish)",
+      "input": {
+        "keyword": "muhasebe firması",
+        "city": "İzmir",
+        "count": 3
+      },
+      "expected_outcome": "Discovers companies, evaluates fit, inserts ≥1 qualified prospect",
+      "eval_criteria": [
+        "Brave search works with Turkish keywords",
+        "Email draft uses formal 'Siz' Turkish",
+        "Avoids business clichés (eşsiz, güçlü, yenilikçi)",
+        "AI opportunities are specific (not generic)"
+      ]
+    },
+    {
+      "id": "eval-3",
+      "name": "Occupational health clinics (Turkish)",
+      "input": {
+        "keyword": "iş sağlığı ve güvenliği",
+        "city": "Ankara",
+        "count": 2
+      },
+      "expected_outcome": "Discovers health/safety companies, scores fit, inserts prospects",
+      "eval_criteria": [
+        "Industry correctly identified as healthcare",
+        "ICP scoring reflects Turkish SMB profile",
+        "At least 1 prospect reaches cold_ready status",
+        "Telegram summary accurate"
+      ]
+    }
+  ],
+  "manual_verification": {
+    "after_first_run": [
+      "Check Supabase: verify prospect rows inserted with normalized URLs (no http://, no www.)",
+      "Check Supabase: verify status is 'cold_ready' or 'discarded'",
+      "Check Supabase: verify search_keyword column filled",
+      "Check Supabase: verify ai_opportunities JSONB is valid JSON",
+      "Check email_draft: verify it's well-formed Turkish with proper salutation",
+      "Check Telegram: verify message received with summary"
+    ]
+  }
+}
