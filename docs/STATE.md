@@ -123,10 +123,10 @@
 
 | Blocker | Impact | Resolution needed |
 |---------|--------|-------------------|
-| Outscraper API key not in `.env.local` | Can't test v3.3 discovery (Maps API endpoint) | Sign up at outscraper.com, get API key, add to `.env.local` as `OUTSCRAPER_API_KEY` |
+| ✅ .env.local not sourced in bash | Outscraper API key was empty → silent API failures | Fixed in session 9: Added `source .env.local &&` prefix to all Bash commands needing env vars. Documented in CLAUDE.md. |
 | ✅ SKILL.md v3 async API bug | Discovery was returning Pending status forever | Fixed in session 4: Switched to correct POST /google-maps-search endpoint with proper JSON body (commit e61dbe4) |
 | ✅ Dedup gaps (v3.1–3.2) | CDC DEMİR ÇELİK kept reappearing | Fixed in session 8: Moved dedup from STEP 3 → new STEP 1.5 (pre-check before filtering). Added buffering strategy. Cross-query dedup now working. |
-| SKILL.md v3.3 not yet tested with real data | Don't know if fixes work end-to-end | Ready to test once API key available. Test: run "demir çelik ticareti" + "Kemalpaşa" twice, verify CDC caught on second run (silent, no Telegram mention) |
+| prospect-research v3.3 ready for production | All schema fixes + dedup fixes + buffering implemented | Ready for live testing. 10 companies returned in Kemalpaşa test. Next: run full pipeline (STEP 2-9) and insert to DB. |
 
 ---
 

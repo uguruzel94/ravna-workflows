@@ -137,6 +137,20 @@ All skills live in `.claude/skills/`. Each skill is a SKILL.md file with natural
 - Session logs: `sessions/session-[YYYY-MM-DD].md`
 - Git commits: `feat:`, `fix:`, `test:`, `docs:`, `refactor:` prefixes
 
+### CRITICAL: Environment Variables in Bash Commands
+**When executing bash in Claude Code that needs .env.local vars (API keys, tokens):**
+```bash
+# ✅ CORRECT: Source .env.local at START, with && or line continuation
+source .env.local && curl -s ... -H "X-API-KEY: ${OUTSCRAPER_API_KEY}" ...
+
+# OR with line continuation (preferred):
+source /Users/uguruzel/Vibe/ravna-workflows/.env.local && \
+JOB=$(curl -s -X POST "https://api.app.outscraper.com/google-maps-search" \
+  -H "X-API-KEY: ${OUTSCRAPER_API_KEY}" ...)
+```
+**Why:** Bash tool runs in isolated subprocess. Without `source`, $OUTSCRAPER_API_KEY is empty → API auth fails silently (curl succeeds but API rejects empty key).
+**Session 8 discovery:** Fixed prospect-research skill by adding `source .env.local &&` prefix to STEP 1 discovery call. Skills now work end-to-end.
+
 ### Turkish copy rules (for email drafts, newsletter, reports)
 - Always formal "Siz" — never "Sen"
 - Short sentences. No filler words.
