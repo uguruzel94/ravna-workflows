@@ -1,14 +1,14 @@
 # STATE.md — ravna-workflows
 **Rewrite this file at the end of every session. Do not append — replace.**
-**Last updated:** 2026-03-17 (session 10)
+**Last updated:** 2026-03-17 (session 11)
 
 ---
 
 ## CURRENT STATUS
 
-**Phase:** Prospect Research Four-Bug Dedup Fix (v3.4) — STEP 0.9 + 1.5 + 3
-**Active skill:** prospect-research v3.4 — normalization + two-pass dedup (STEP 1.5 refactored)
-**Overall system:** prospect-research architecture now hardened; company-lookup + 6 other skills pending
+**Phase:** prospect-research v3.5 — Complete Dedup Fix Deployment (all 4 bugs + DB cleanup + schema migration)
+**Active skill:** prospect-research v3.5 — normalization + two-pass dedup + DEDUP GUARD + ⛔ markers + DB constraints
+**Overall system:** prospect-research architecture hardened; ready for end-to-end testing; company-lookup + 6 other skills pending
 
 ---
 
@@ -44,16 +44,24 @@
   - ✅ STEP 2 tail: Fixed JSON syntax + conflict handling
   - ✅ STEP 3: Clarified scope (Stage 1 survivors only; cross-query handled by STEP 1.5)
   - ✅ Execution flow: Updated to 12 steps (added STEP 1.5)
-- [x] `prospect-research/SKILL.md` v3.4 — four-bug dedup fix (session 10)
+- [x] `prospect-research/SKILL.md` v3.4 — four-bug dedup fix (session 10 — identified)
   - ✅ Fix 1: STEP 0.9 normalization (Turkish→ASCII, strip suffixes before searches table lookup)
   - ✅ Fix 2: STEP 1.5 mandatory DB Gate (⛔ marker, direct Supabase MCP, two-pass: exact SQL + Haiku fuzzy)
   - ✅ Fix 3: STEP 3 safety net (⛔ marker, clarified as final check before STEP 4)
   - ✅ Fix 4: Pre-Outscraper warning (re-run cost + low likelihood message)
   - ✅ Execution flow: Updated with ⛔ markers for direct SQL steps (0.9, 1.5, 3, 8, 9, 9.5)
+- [x] `prospect-research/SKILL.md` v3.5 — complete dedup fix deployment (session 11)
+  - ✅ DB cleanup: Deleted 2 duplicate prospects (CDC DEMİR ÇELİK, PARS DIS TICARET)
+  - ✅ Schema migration: Added keyword_normalized + location_normalized columns, backfilled, added UNIQUE constraint + index
+  - ✅ DEDUP GUARD header: Inserted before STEP 0.9 with mandatory logging requirement
+  - ✅ STEP 0.9 SQL fixed: Removed `?` placeholders, now uses literal string values for normalized lookups
+  - ✅ STEP 9.5 INSERT fixed: Added normalized columns, changed CONFLICT to use normalized constraint
+  - ✅ schema.sql updated: searches table definition now includes normalized columns
+  - ✅ All verification checks passed: No duplicate searches (V2) or prospects (V3), schema correct (V1)
 - [x] `prospect-research/evals.json` — created with 3 test cases
 - [x] `company-lookup/SKILL.md` v1 — written (natural language parser + Supabase query builder)
 - [x] `company-lookup/SKILL.md` v1.1 — optimized (switched parser from Sonnet → Haiku for cost/speed)
-- [ ] `prospect-research/SKILL.md` v3.4 — tested with real data (Outscraper API key needed)
+- [ ] `prospect-research/SKILL.md` v3.5 — tested with real data (Outscraper API key needed)
 - [ ] `prospect-research/SKILL.md` v3.4 — email tone verified
 - [ ] `company-lookup/SKILL.md` v1.1 — tested with real data (Supabase queries)
 - [ ] `orchestrator/SKILL.md` — sketched (design in ORCHESTRATOR-SKETCH.md), P3
@@ -68,9 +76,50 @@
 
 ## LAST SESSION
 
+**Date:** 2026-03-17 (session 11)
+
+**Task: Prospect Research — Complete Dedup Fix Implementation (v3.5 — DB cleanup + schema migration + SKILL.md updates)**
+
+**What was done:**
+
+**Part 1 — Database Cleanup**
+- Inspected duplicates: Found 2 duplicate prospects (CDC DEMİR ÇELİK × 2, PARS DIS TICARET × 2)
+- Deleted newer duplicates, kept earliest created_at per normalized name (using REGEXP_REPLACE for consistency)
+- Result: 0 duplicate prospects in DB
+
+**Part 2 — Schema Migration**
+- Added `keyword_normalized TEXT` and `location_normalized TEXT` columns to searches table (nullable first)
+- Backfilled all existing rows using: `lower(translate(keyword/location, 'çşığüöÇŞİĞÜÖ', 'csiguoCsIGUO'))`
+- Dropped old UNIQUE constraint on raw (keyword, location)
+- Set both columns NOT NULL
+- Added new UNIQUE constraint on (keyword_normalized, location_normalized)
+- Created index `idx_searches_normalized` for STEP 0.9 query performance
+- Result: 3 duplicate searches reduced to 1, schema hardened
+
+**Part 3 — schema.sql Update**
+- Updated canonical schema definition to include normalized columns in searches table
+- Ensures fresh Supabase projects get correct schema from day 1
+
+**Part 4 — SKILL.md Updates**
+- Added ⛔ DEDUP GUARD header (before line 13) with 3 forbidden steps and mandatory logging requirement
+- Fixed STEP 0.9: Removed `?` placeholders, documented literal string substitution, added translate() formula
+- Fixed STEP 9.5: Added normalized columns to INSERT, changed CONFLICT clause to use normalized constraint
+
+**Part 5 — Verification**
+- ✅ V1: Schema correct — both normalized columns present and NOT NULL
+- ✅ V2: No duplicate searches (0 rows with COUNT(*) > 1)
+- ✅ V3: No duplicate prospects (0 rows with COUNT(*) > 1)
+- All verification queries returned empty results (confirming fix worked)
+
+**Commit:** `fix: prospect-research SKILL.md v3.5 — complete dedup fix (DB + schema + guard)` (deployed)
+
+---
+
+## LAST SESSION (session 10)
+
 **Date:** 2026-03-17 (session 10)
 
-**Task: Prospect Research — Four-Bug Dedup Fix (v3.4 — STEP 0.9 + 1.5 + 3 hardening)**
+**Task: Prospect Research — Four-Bug Dedup Fix Analysis (v3.4 — STEP 0.9 + 1.5 + 3 hardening)**
 
 **Problems discovered (from v3.3):** During Kemalpasa demir çelik ticareti search, KANAAT DEMİR and MERT ÇELİK were already in DB from 2026-03-16, but:
 1. STEP 1.5 and STEP 3 were silently skipped (bundled into Haiku subagent, which did memory intent-matching but never executed SQL)
@@ -121,8 +170,8 @@
 | ✅ .env.local vars not exported to child processes | Repeated skill failures: OUTSCRAPER_API_KEY & SUPABASE_KEY appeared "missing" despite being in .env.local | Fixed in session 9: Added `export` prefix to all 8 vars in .env.local. Updated CLAUDE.md + SKILL.md to document this. |
 | ✅ Supabase MCP project_id not documented | Skill had no way to know which project_id to use → guessed wrong → permission denied | Fixed in session 9: Added `SUPABASE_PROJECT_ID=zbzhyhpphsugepwcqmvg` to .env.local. Updated CLAUDE.md + SKILL.md. |
 | ✅ SKILL.md v3 async API bug | Discovery was returning Pending status forever | Fixed in session 4: Switched to correct POST /google-maps-search endpoint (commit e61dbe4). |
-| ✅ Dedup gaps (v3.1–3.3) | CDC DEMİR ÇELİK kept reappearing; STEP 1.5 silently skipped | Fixed in session 10: Refactored STEP 1.5 as mandatory direct DB Gate (two-pass); added STEP 0.9 normalization; added ⛔ markers to all critical direct-SQL steps. |
-| prospect-research v3.4 needs end-to-end test | All fixes deployed but untested with real Outscraper data | Next: Run with `keyword: "demir çelik ticareti", location: "Kemalpasa", count: 5`. Verify: DB inserts, Telegram notification, searches table log, no duplicates on re-run. |
+| ✅ Dedup gaps (v3.1–3.3) | CDC DEMİR ÇELİK kept reappearing; STEP 1.5 silently skipped | Fixed in sessions 10–11: Identified 4 root causes (subagent delegation, missing normalization, raw SQL constraints, no re-run warning). Deployed v3.5: DB cleanup (deleted 2 duplicate prospects), schema migration (added normalized columns + UNIQUE constraint + index), SKILL.md hardening (⛔ DEDUP GUARD header, fixed STEP 0.9/9.5 SQL, mandatory logging). All verification checks passed. |
+| prospect-research v3.5 needs end-to-end test | All fixes deployed and DB verified, but untested with real Outscraper data | Next: Run with `keyword: "demir çelik ticareti", location: "Kemalpasa", count: 5`. Verify: DB inserts, Telegram notification, searches table log, no duplicates on re-run. |
 
 ---
 
@@ -134,23 +183,28 @@
 
 When you open Claude Code next:
 
-> **Priority 1: Run prospect-research v3.4 end-to-end (four-bug dedup fix now deployed)**
-> - ✅ STEP 0.9 normalization deployed (Turkish→ASCII, strip suffixes)
-> - ✅ STEP 1.5 two-pass dedup deployed (⛔ mandatory direct DB Gate: Pass 1 SQL, Pass 2 Haiku fuzzy)
-> - ✅ STEP 3 safety net marked (⛔, final check before research)
+> **Priority 1: Run prospect-research v3.5 end-to-end (complete dedup fix now fully deployed)**
+> - ✅ DB cleanup: 2 duplicate prospects deleted
+> - ✅ Schema migration: normalized columns added, UNIQUE constraint updated, index created
+> - ✅ SKILL.md: ⛔ DEDUP GUARD header + fixed STEP 0.9/9.5 SQL + mandatory logging
+> - ✅ All verification checks passed
 > - Ready to run: `keyword: "demir çelik ticareti", location: "Kemalpasa", count: 5`
 > - Verify: All 5 companies inserted to DB with score, email_draft, ai_opportunities, contact data
 > - Verify: Telegram notification sent with correct formatting (MarkdownV2)
-> - Verify: searches table logged with keyword_normalized, location_normalized, result_count, last_searched_at
+> - Verify: searches table logged with keyword_normalized, location_normalized, results_count, last_searched_at
+> - Verify: STEP 0.9 logs actual SQL result (if any) or report "no previous search found"
+> - Verify: STEP 1.5 logs SQL result from Pass 1 (exact matches removed)
+> - Verify: STEP 3 logs final dedup check before research
 >
-> **Priority 2: Test STEP 0.9 normalization + two-pass dedup (v3.4 fix validation)**
+> **Priority 2: Test STEP 0.9 normalization + two-pass dedup (v3.5 variant spelling test)**
 > - After first run populates DB with Kemalpasa prospects:
 > - Run 2: `keyword: "demir celik ticareti", location: "Kemalpasa, İzmir", count: 5` (variant spelling/location)
-> - Verify: STEP 0.9 recognizes as same search (normalized values match)
-> - Verify: Asks user before re-running Outscraper (with cost warning)
+> - Verify: STEP 0.9 recognizes as same search (normalized values match) and asks user
+> - Verify: Asks user before re-running Outscraper (with cost warning + likelihood message)
 > - Verify: STEP 1.5 Pass 1 (exact SQL) removes known companies
 > - Verify: STEP 1.5 Pass 2 (Haiku fuzzy) catches any near-duplicates
-> - Verify: DB shows no duplicate records
+> - Verify: DB shows no duplicate records after second run
+> - Verify: searches table shows updated last_searched_at (UPSERT worked)
 >
 > **Priority 3: Test re-run with different keyword (cross-query dedup)**
 > - Run 3: `keyword: "çelik satıcı", location: "Kemalpasa", count: 5` (different keyword, same city)
@@ -182,6 +236,7 @@ When you open Claude Code next:
 |------|------|-------|-------------|
 | 2026-03-17 (session 8) | Dedup stress test + v3.3 fixes + schema updates | Haiku | $0.01 |
 | 2026-03-17 (session 9) | Env var debugging + .env.local export fix + SUPABASE_PROJECT_ID setup + CLAUDE.md + SKILL.md updates | Haiku | $0.01 |
-| 2026-03-17 (session 10) | Four-bug dedup fix: STEP 0.9 normalization + STEP 1.5 two-pass refactor + STEP 3 safety net + ⛔ markers + STATE.md update | Haiku | $0.01 |
+| 2026-03-17 (session 10) | Four-bug dedup fix analysis: Root cause analysis, STEP 0.9 normalization + STEP 1.5 two-pass refactor + STEP 3 safety net + ⛔ markers | Haiku | $0.01 |
+| 2026-03-17 (session 11) | Complete dedup fix deployment: DB cleanup (3 DELETE queries) + schema migration (6 ALTER/CREATE queries) + schema.sql update + SKILL.md fixes (DEDUP GUARD header, STEP 0.9 SQL, STEP 9.5 INSERT) + verification (3 SELECT queries) + STATE.md update + commit | Haiku | $0.01 |
 
 **Monthly budget target:** Keep automated daily costs under $0.50/day (~$15/month)
