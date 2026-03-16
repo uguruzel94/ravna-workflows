@@ -73,12 +73,13 @@ description: >
 
 **Task:**
 ```bash
-GET https://api.app.outscraper.com/maps/search
-  ?query={keyword} {city}
-  &limit=min(count * 3, 50)
-  &language=tr
-
-Headers: X-API-KEY: {OUTSCRAPER_API_KEY}
+curl -s --max-time 90 "https://api.app.outscraper.com/maps/search" \
+  -G \
+  --data-urlencode "query={keyword} {city}" \
+  --data-urlencode "limit=min(count * 3, 50)" \
+  --data-urlencode "language=tr" \
+  --data-urlencode "async=false" \
+  -H "X-API-KEY: ${OUTSCRAPER_API_KEY}"
 ```
 
 **Cost guard:** `limit = min(count * 3, 50)` — absolute ceiling of 50 records per run.
