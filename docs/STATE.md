@@ -1,6 +1,6 @@
 # STATE.md — ravna-workflows
 **Rewrite this file at the end of every session. Do not append — replace.**
-**Last updated:** 2026-03-16 (session 3)
+**Last updated:** 2026-03-16 (session 4)
 
 ---
 
@@ -50,29 +50,26 @@
 
 ## LAST SESSION
 
-**Date:** 2026-03-16
+**Date:** 2026-03-16 (session 4)
 **What was done:**
-- Created git branch `feature/prospect-research-v3`
-- Updated `.claude/settings.json` with Playwright + Bash(*) + Supabase MCP permissions
-- Applied Supabase migration: added `phone TEXT`, `address TEXT`, `email TEXT` columns to prospects table
-- Completely rewrote `.claude/skills/prospect-research/SKILL.md` for v3:
-  * Outscraper Google Maps API for discovery (replaces Brave Search)
-  * Two-stage filtering: Stage 1 (Maps metadata pre-filter), Stage 2 (website scraping only for survivors)
-  * Evidence-required ICP scoring rubric (each point needs proof)
-  * Intent-driven category matching (replaces hardcoded rules)
-  * Contact data extraction: phone (Maps) + address (Maps) + email (website)
-  * Fixed Telegram formatting with jq + MarkdownV2
-  * No hardcoded parallelism cap (default 10, user-controlled)
+- Fixed Outscraper API integration in prospect-research SKILL.md:
+  * Replaced broken GET /maps/search endpoint with correct POST /google-maps-search
+  * Updated curl command: JSON body with `organizationsPerQueryLimit` field (not `limit`)
+  * Added required header: `client: Python SDK` (per official SDK requirements)
+  * Implemented proper async job polling: 5-second intervals, up to 720 iterations (60 minutes)
+  * Changed status check from `"Success"` to `!= "Pending"` (polling until completion)
+  * Full curl command with example data: `tıbbi cihaz distributor İstanbul`, limit 3
+- Committed fix: `e61dbe4` "fix: prospect-research SKILL.md — correct Outscraper endpoint + polling logic"
+- Updated STATE.md to mark async API bug as resolved
 
-**Decisions confirmed:**
-- Outscraper cost: ~$0.003/record, 50-record hard limit per run (~$0.15 max)
-- Intent field lets clients describe ICP in plain language (no SKILL.md editing needed)
-- Pre-filtering eliminates 40-60% of records before scraping (cost/time efficiency)
-- Evidence-based scoring ensures quality > quantity (no more all-10 scores)
-- MarkdownV2 escaping in Telegram via jq (fixes newline collapse bug)
+**Root cause of previous bug:**
+- Session 3 used `GET /maps/search` (old/wrong endpoint) + `async=false` (unsupported parameter)
+- This caused API to queue jobs that never executed (perpetual Pending status)
+- Official Python SDK uses POST /google-maps-search with proper JSON structure
 
-**Problems encountered:**
-- Outscraper Maps API returns async responses by default (status: "Pending"). Required polling loop which wasn't in SKILL.md. Fixed: added `async=false` parameter + `--max-time 90` to curl command in STEP 1.
+**Status:**
+- SKILL.md Step 1 now matches Outscraper SDK implementation
+- Ready for live testing with real API key
 
 ---
 
@@ -81,7 +78,7 @@
 | Blocker | Impact | Resolution needed |
 |---------|--------|-------------------|
 | Outscraper API key not in `.env.local` | Can't test v3 discovery (Maps API endpoint) | Sign up at outscraper.com, get API key, add to `.env.local` as `OUTSCRAPER_API_KEY` |
-| SKILL.md v3 async API bug | Discovery was returning Pending status forever | ✅ Fixed: Added `async=false` + `--max-time 90` to curl command (commit bd3ea59) |
+| ✅ SKILL.md v3 async API bug | Discovery was returning Pending status forever | Fixed in session 4: Switched to correct POST /google-maps-search endpoint with proper JSON body, polling every 5s up to 60 minutes. Used organizationsPerQueryLimit field. Added Python SDK client header. (commit e61dbe4) |
 | SKILL.md v3 not yet tested with real data | Don't know if Outscraper integration works end-to-end | Ready to test once API key available. Test with: keyword="tıbbi cihaz distributor", city="İstanbul", count=3 |
 
 ---
