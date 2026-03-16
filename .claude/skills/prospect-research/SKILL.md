@@ -10,350 +10,454 @@ description: >
   keyword queue has pending entries.
 ---
 
-# Prospect Research Agent v2
+# Prospect Research Agent v3
 
-**Purpose:** Find and qualify Turkish SMB prospects in a specific industry/city, score them by ICP fit, draft cold outreach emails, and stage them in the pipeline.
+**Purpose:** Discover and qualify Turkish SMB prospects using structured Maps data + website research, score by evidence-based ICP fit, extract contact details, draft cold outreach emails, and stage them in the pipeline.
 
-**Input schema:**
+**Version:** v3 — Outscraper discovery + two-stage filtering + evidence-based ICP scoring
+
+**Key improvements over v2:**
+- **Discovery source:** Outscraper (Google Maps) instead of Brave Search — structured data with phone/address/ratings
+- **Two-stage filtering:** Maps metadata pre-filter (reviews, ratings, category) before any website scraping
+- **Contact extraction:** Phone (Maps) + address (Maps) + email (website scraping)
+- **ICP scoring:** Evidence-required rubric — each point needs proof, not assumptions
+- **Intent matching:** Natural language `intent` field replaces hardcoded category rules
+- **Parallelism:** No hardcoded cap — default 10, user-controlled
+- **Cost control:** Hard limit of 50 records per run (configurable)
+
+---
+
+## INPUT SCHEMA
+
 ```json
 {
   "keyword": "tıbbi cihaz distributor",
-  "city": "Ankara",
-  "count": 3,
+  "city": "İstanbul",
+  "count": 10,
+  "intent": "Tıbbi cihaz ve medikal ekipman distribütörleri. Hastanelere, kliniklere veya laboratuvarlara satan firmalar. Dişçi, eczane, veteriner, optik değil.",
   "industry": "healthcare"
 }
 ```
 
-| Param | Type | Default | Notes |
-|-------|------|---------|-------|
-| `keyword` | string | required | Industry/sector search term (e.g., "muhasebe firması", "tıbbi ekipman") |
-| `city` | string | required | Turkish city (e.g., "İzmir", "İstanbul") |
-| `count` | integer | 3 | How many companies to research (max 5, min 1). Higher counts spawn more Haiku subagents. |
-| `industry` | string | optional | If known (e.g., "accounting", "healthcare"), improves Brave search specificity |
+| Param | Required | Type | Default | Notes |
+|-------|----------|------|---------|-------|
+| `keyword` | yes | string | — | Search term for Outscraper Maps query. E.g., "tıbbi cihaz distributor", "muhasebe firması" |
+| `city` | yes | string | — | Turkish city name (e.g., "İstanbul", "Ankara") |
+| `count` | no | integer | 10 | How many companies to research. No hardcoded cap; respects user input. |
+| `intent` | no | string | inferred | Natural language: what to find AND what to exclude. E.g., "healthcare + distribution, no retail clinics". Used by Sonnet for intent matching. If omitted, Sonnet infers from keyword + industry. |
+| `industry` | no | string | — | Helps with Brave fallback and Sonnet context. |
 
-**Output:** Prospects inserted into Supabase `prospects` table with status `'cold_ready'` or `'discarded'`, cold email draft staged for review (if score ≥ 6).
+**The `intent` field is key:** It lets clients describe their ICP in plain language without editing SKILL.md. Replaces all hardcoded category logic.
 
 ---
 
-## STEP 1: Discovery — Find Company URLs
+## STEP 0: Setup & Environment
+
+**Required env vars** (in `.env.local`):
+- `OUTSCRAPER_API_KEY` — Outscraper account (https://outscraper.com). Free tier: 500 records/month. Cost: ~$0.003/record (~$0.15 max per run of 50 records).
+- `TELEGRAM_BOT_TOKEN` — Telegram bot (for notifications)
+- `TELEGRAM_CHAT_ID` — Chat ID for status messages
+
+**If `OUTSCRAPER_API_KEY` not set:**
+- Log: `"⚠️ Outscraper unavailable — running degraded mode via Brave Search"`
+- Fall back to v2 behavior (3 Brave searches for discovery)
+- Continue normally through rest of pipeline
+
+---
+
+## STEP 1: Discovery — Outscraper Maps Search
 
 **Model:** Haiku (1 subagent)
-**Input:** keyword, city
-**Tools:** Brave Search API
+**Tools:** Bash (curl to Outscraper API)
+**Cost:** ~$0.15 per run max (50 records × $0.003)
 
-**Task:** Run 3 parallel Brave searches to discover direct company websites matching the keyword + city:
+**Task:**
+```bash
+GET https://api.app.outscraper.com/maps/search
+  ?query={keyword} {city}
+  &limit=min(count * 3, 50)
+  &language=tr
 
-```
-Search 1: "{keyword} {city} firma"
-Search 2: "{keyword} {city} şirket iletişim"
-Search 3: "{keyword} {city} hakkımızda"
-```
-
-**Filtering rules:**
-- **Keep:** URLs with `.com.tr`, `.com`, `.net` domains that look like direct company websites
-  - Examples: mefamed.com.tr, acmemedical.com.tr, danismanlık.net
-- **Skip:** Directory/marketplace/news sites:
-  - sahibinden.com, endustri.com, kobiforum.org, yenibirligi.org.tr, komeri.com
-  - LinkedIn.com, Facebook.com, Instagram.com, Google.com, Twitter.com
-  - News/blog sites: haberturk.com, bbc.com.tr, internethaber.com
-  - Generic B2B directories (unless it's a direct company site link)
-- **Skip:** Results without a clear URL or redirects
-
-**Extraction logic:**
-1. From each search result title + URL, extract ONLY the domain/company website URL
-2. If result is a LinkedIn profile or directory, skip it
-3. Collect up to `count × 2` unique company URLs (buffer for dedup)
-4. Stop extracting if you hit `count × 2` or all 3 searches are exhausted
-
-**Output format (JSON):**
-```json
-{
-  "discovered_urls": [
-    "mefamed.com.tr",
-    "acmemedical.com.tr",
-    "healthequip.com.tr",
-    "etc..."
-  ],
-  "search_queries": [
-    "{keyword} {city} firma",
-    "{keyword} {city} şirket iletişim",
-    "{keyword} {city} hakkımızda"
-  ],
-  "total_found": 6
-}
+Headers: X-API-KEY: {OUTSCRAPER_API_KEY}
 ```
 
-**Error handling:**
-- If all 3 searches return ONLY directories/social media/news sites (0 valid company URLs):
-  - Return failure message: `"Discovery failed: no direct company websites found for '{keyword}' in {city}. Try a more specific keyword (e.g., add 'ltd', 'a.ş.', or specific product name)."`
-  - STOP — do not proceed to next step
-- If <2 company URLs found: continue with what was found (don't fail)
+**Cost guard:** `limit = min(count * 3, 50)` — absolute ceiling of 50 records per run.
 
----
-
-## STEP 2: Deduplication — Check DB
-
-**Model:** None (direct SQL via Supabase)
-**Input:** Discovered URLs
-**Tools:** Supabase execute_sql
-
-**Task:** Query the `prospects` table for URLs that already exist (in any status, including `'discarded'`).
-
-**URL normalization before comparison:**
-1. Strip protocol: `http://` or `https://` → remove
-2. Strip `www.`: `www.mefamed.com.tr` → `mefamed.com.tr`
-3. Strip trailing slash: `mefamed.com.tr/` → `mefamed.com.tr`
-4. Use normalized domain for comparison
-5. Store normalized URL in database
-
-**SQL query (pseudocode):**
-```sql
-SELECT url FROM prospects
-WHERE url IN (normalized_list)
-AND status IN ('cold_ready', 'cold_sent', 'replied', 'audited', 'proposal_sent', 'won', 'lost', 'paused', 'discarded');
-```
-
-**Logic:**
-- For each discovered URL, normalize it
-- Query DB: is this normalized URL already in prospects table?
-- If YES: skip (mark as "duplicate")
-- If NO: add to qualified list
-- Keep top `count` new URLs (after filtering duplicates)
-
-**Output:**
-```json
-{
-  "qualified_urls": [
-    "mefamed.com.tr",
-    "acmemedical.com.tr"
-  ],
-  "duplicates_skipped": ["healthequip.com.tr"],
-  "total_new": 2
-}
-```
-
-**Error handling:**
-- If ALL discovered URLs are already in DB:
-  - Return: `"No new prospects found — all {N} discovered companies are already in the pipeline. Try a different keyword or city."`
-  - STOP — do not proceed to next step
-
----
-
-## STEP 3: Parallel Research — Scrape & Search Each Company
-
-**Model:** Haiku × 2 per company (N × 2 total, run in parallel)
-**Input:** Qualified URLs
-**Tools:** Puppeteer MCP (subagent A), Brave Search API (subagent B)
-
-**Task:** For each qualified URL, spawn TWO independent subagents simultaneously:
-
-### Subagent A: Website Scraper (Puppeteer)
-
-**Input:** company_url
-**Timeout:** 15 seconds per URL
-**Steps:**
-
-1. Use `puppeteer_navigate` to navigate to the company URL
-2. Wait for page load (15s timeout)
-3. Extract full page text with `puppeteer_evaluate`:
-   ```javascript
-   document.body.innerText
-   ```
-   This returns all visible text from the page.
-4. If main page is sparse (<200 words), also try:
-   - URL + `/hakkimizda` (About us)
-   - URL + `/about` (fallback)
-   - Try each once (don't wait for both)
-5. Combine all scraped text
-
-**Extract from text:**
-- Company description / mission statement
-- Products or services offered (list specific items)
-- Team size signals:
-  - "X person team", "X employees", job listings
-  - "Kurucumuz" (founder) sections, "Ekipimiz" (our team)
-- Tech stack mentions (software, tools, systems they use)
-- Founder/owner name (look for: "kurucu", "genel müdür", "başkan", "CEO")
-- Any mention of AI, automation, digital transformation, technology initiatives
-
-**Return format:**
-```json
-{
-  "url": "mefamed.com.tr",
-  "puppeteer_text": "Full page text extracted... (max 1500 words)",
-  "status": "success" | "timeout" | "error"
-}
-```
-
-**Error handling:**
-- If navigate times out (>15s) or fails: return `{"status": "timeout"}`
-- If page returns 404 or error: return `{"status": "error"}`
-- If status is timeout/error: skip Puppeteer data for this company, use only Brave search
-
-### Subagent B: Industry Research (Brave Search)
-
-**Input:** company_name (inferred from URL), industry (if provided), keyword
-**Steps:**
-
-1. Run 2 Brave searches per company:
-   - Search 1: `"{company_name} hakkında {city}"` (about company)
-   - Search 2: `"{industry_if_provided else keyword} Türkiye yapay zeka KOBİ 2025"` (sector AI adoption)
-2. Extract top 3 result titles + snippets from each search
-3. Combine all snippets into a single text block
-
-**Return format:**
-```json
-{
-  "url": "mefamed.com.tr",
-  "brave_search": "Search 1: [titles and snippets]... Search 2: [titles and snippets]... (max 500 words)",
-  "status": "success"
-}
-```
-
-**Rate limit tracking:** Each company = 2 Brave calls. For count=5, that's 10 calls. Plus 3 discovery calls = 13 total. Budget: 30 calls max per skill invocation.
-
----
-
-## STEP 4: Analysis & ICP Scoring (Sonnet per company)
-
-**Model:** Sonnet
-**Input:** company_name, puppeteer_text, brave_search, keyword, industry
-**Task:** Analyze research data and score ICP fit.
-
-**For each company, generate:**
-
-### AI Opportunities (3 specific to this business)
-
-Each opportunity should:
-- Have a specific name (not generic): e.g., "Otomatik fatura işleme", "Lead scoring sistemi", "Müşteri yorum analizi"
-- Identify what manual process it replaces: e.g., "muhasebeciler tarafından el ile yapılan fatura girişi"
-- Estimate hours/week saved: e.g., "8-10 saat/hafta"
-
-**Example format:**
-```json
-{
-  "opportunity_1": {
-    "name": "Otomatik fatura işleme",
-    "process": "İthalatçılar tarafından tedarikçi faturalarının Netsis ERP'ye el ile girilmesi",
-    "hours_saved": "10 saat/hafta"
-  }
-}
-```
-
-### Industry (inferred)
-
-From scraped text + Brave results, identify the industry. Examples:
-- "sağlık teknolojisi" (healthcare)
-- "muhasebe hizmetleri" (accounting)
-- "lojistik" (logistics)
-
-### ICP Score (1–10)
-
-Scoring rubric:
-```
-Base: 1 point
-
-+2: Healthcare-adjacent OR professional services (accounting, law, consulting)
-+2: Based in Turkey (confirmed from research or city match)
-+2: Company size 5–50 people (inferred from team mentions, job postings)
-+2: Owner-operated (founder visible in research, not a large corp)
-+2: No visible current AI usage (no mentions of AI tools, automation, digital initiatives)
-
-Score interpretation:
-10 = perfect fit (all criteria met)
-6–9 = good fit (most criteria met)
-< 6 = poor fit (discard)
-```
-
-### Discard Decision
-
-If score < 6:
-- Record reason for discard: e.g., "Enterprise size (>100 employees)", "No Turkish operations", "Already using AI extensively"
-- Mark for status `'discarded'` in DB
-- Do NOT draft email
-- Do NOT continue to Step 5
-
-If score ≥ 6:
-- Continue to Step 5 (email draft)
+**Per-company data returned:**
+- `business_name` — official company name
+- `phone` — phone number (if listed)
+- `website` — company website URL
+- `address` — full address
+- `type` — Google Maps category (e.g., "Tıbbi cihaz dağıtıcısı", "Diş hekimi", "Eczane")
+- `review_count` — number of Google reviews
+- `rating` — Google rating (1-5 stars)
+- `coordinates` — lat/lng
 
 **Output format:**
 ```json
 {
-  "url": "mefamed.com.tr",
-  "company_name": "Mefamed Ltd.",
-  "industry": "tıbbi cihaz dağıtımı",
-  "ai_opportunities": [...],
-  "score": 8,
-  "status": "cold_ready" | "discarded",
-  "discard_reason": null | "reason if discarded"
+  "discovered_companies": [
+    {
+      "business_name": "Mefamed Ltd.",
+      "phone": "+90 (212) 123-4567",
+      "website": "mefamed.com.tr",
+      "address": "Levent, İstanbul",
+      "type": "Tıbbi cihaz dağıtıcısı",
+      "review_count": 45,
+      "rating": 4.8
+    }
+  ],
+  "total_found": 15,
+  "api_status": "success" | "degraded"
+}
+```
+
+**Error handling:**
+- If API key missing: log warning, fall back to Brave searches (log: "degraded mode")
+- If API returns error: fall back to Brave searches
+- If no results found: return empty array, continue (don't fail)
+
+---
+
+## STEP 2: Stage 1 Pre-filter — Maps Metadata Only
+
+**Model:** Haiku (1 subagent)
+**Tools:** None (pure logic)
+**Cost:** Free (no API calls)
+
+**Task:** Filter Outscraper results using Maps metadata. Discard companies that don't meet basic criteria:
+
+### Hard filters (automatic discard):
+1. **No website listed** — can't scrape for email
+2. **Review count > 200** — signals B2C or large enterprise (likely outside ICP)
+3. **Rating < 3.5 stars** — signals inactive/ghost/problematic listing
+
+### Intent matching (Haiku + `intent` field):
+
+For each company, pass to Haiku:
+- Company name + Maps `type` (category)
+- User-provided `intent` field (or inferred intent)
+- Ask: **"Does this company match the intent? Answer yes/no only."**
+
+Logic:
+- If intent says "no veterinarians" and Maps type = "Veteriner", → discard
+- If intent says "healthcare distribution" and Maps type = "Tıbbi cihaz dağıtıcısı", → keep
+- If unsure, ask Haiku to evaluate
+
+This stage typically eliminates 40-60% of records without any website scraping.
+
+**Keep top `count` survivors** after Stage 1 (after re-sorting by rating if needed).
+
+**Output:**
+```json
+{
+  "stage1_survivors": [
+    {
+      "business_name": "Mefamed Ltd.",
+      "phone": "+90 (212) 123-4567",
+      "website": "mefamed.com.tr",
+      "address": "Levent, İstanbul",
+      "type": "Tıbbi cihaz dağıtıcısı",
+      "rating": 4.8,
+      "intent_match": "yes"
+    }
+  ],
+  "discarded_stage1": [
+    {
+      "business_name": "DrSmile Kliniği",
+      "reason": "intent_mismatch — Diş hekimi (excluded in intent)"
+    }
+  ],
+  "total_stage1": 10
 }
 ```
 
 ---
 
-## STEP 5: Email Draft (Sonnet per qualifying company)
+## STEP 3: Deduplication — Check Supabase DB
+
+**Model:** None (direct SQL)
+**Tools:** Supabase execute_sql
+
+**Task:** Query `prospects` table for URLs that already exist (any status, including `'discarded'`).
+
+**URL normalization:**
+1. Strip protocol: `https://mefamed.com.tr` → `mefamed.com.tr`
+2. Strip `www.`: `www.mefamed.com.tr` → `mefamed.com.tr`
+3. Strip trailing slash: `mefamed.com.tr/` → `mefamed.com.tr`
+
+**SQL:**
+```sql
+SELECT DISTINCT url FROM prospects
+WHERE url IN (list_of_normalized_urls);
+```
+
+**Logic:**
+- For each Stage 1 survivor, normalize the URL
+- Check if already in DB
+- If yes: skip (mark as "duplicate")
+- If no: add to research queue
+
+**Keep top `count` new URLs** after dedup.
+
+**Output:**
+```json
+{
+  "qualified_for_research": [
+    {
+      "business_name": "Mefamed Ltd.",
+      "url_normalized": "mefamed.com.tr",
+      "phone": "+90 (212) 123-4567",
+      "address": "Levent, İstanbul"
+    }
+  ],
+  "duplicates_skipped": 2,
+  "total_qualified": 5
+}
+```
+
+---
+
+## STEP 4: Stage 2 Research — Website Scraping + Contact Extraction
+
+**Model:** Haiku × 1 per company (N agents, parallel)
+**Tools:** Playwright MCP
+**Cost:** Depends on website accessibility
+
+**Task:** For each qualified company, scrape website and extract contact/business data.
+
+### Subagent: Website Scraper (Playwright)
+
+**Per company:**
+1. Navigate to company URL (15s timeout)
+2. Extract full page text: `document.body.innerText`
+3. If sparse (<200 words), try:
+   - `/iletisim` (contact page)
+   - `/about` or `/hakkimizda` (about page)
+   - Pick whichever is accessible
+4. Combine all text
+
+**Extract from scraped text:**
+- **Email:** regex `[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}` — store first match
+- **Founder/owner name:** keywords: "kurucu", "genel müdür", "başkan", "CEO", "yönetici"
+- **Team size signals:** "X kişi", "X personel", "X çalışan", job listings, "Ekipimiz"
+- **Products/services:** specific items listed on homepage/about
+- **Tech stack:** software, CRM, ERP, automation tools mentioned
+- **AI mentions:** "yapay zeka", "AI", "otomasyon", "dijital dönüşüm", "veri analizi"
+
+**Return per company:**
+```json
+{
+  "business_name": "Mefamed Ltd.",
+  "url": "mefamed.com.tr",
+  "phone": "+90 (212) 123-4567",  // from Maps
+  "address": "Levent, İstanbul",  // from Maps
+  "email": "info@mefamed.com.tr",  // extracted from website
+  "scraped_text": "Full page text... (max 1500 words)",
+  "founder_name": "Mehmet Kaya",
+  "team_size_indicator": "20+ employees (from job listings)",
+  "has_ai_mentions": false,
+  "scrape_status": "success" | "timeout" | "error"
+}
+```
+
+**Error handling:**
+- Timeout/404/error: return what was found (phone + address from Maps still present)
+- No email found: leave `email: null`
+- Proceed anyway — don't fail the company
+
+---
+
+## STEP 5: ICP Scoring — Evidence-Required Rubric (Sonnet per company)
+
+**Model:** Sonnet (per company)
+**Input:** Outscraper data + scraped website text + `intent`
+**Task:** Score ICP fit with evidence required for each point.
+
+### Scoring rubric:
+
+```
+Base: 1 point
+
++2: Intent matches
+  EVIDENCE: Company name + Maps category align with stated intent
+  → Use: intent field (if provided) OR inferred from keyword + industry
+  → Hard discard if: company clearly violates intent exclusions
+  → Example: intent says "no veterinarians", Maps type = "Veteriner" → reject
+
++2: Turkey confirmed
+  EVIDENCE: Turkish address (Maps data) OR .com.tr/.net.tr domain
+  OR Turkish phone prefix (+90 / 0XXX)
+  → Usually always confirmed from Outscraper
+
++2: Team size 5–50 people
+  EVIDENCE: Website shows staff count OR job listings count
+  OR /about page mentions team size OR social signals (LinkedIn company pages referenced)
+  → 0 points if: single-page site, no team signals (likely solo)
+  → 0 points if: multiple locations on Maps (signals chain/large org)
+  → 0 points if: >100 reviews with no team mentions (proxy for scale)
+
++2: Owner-operated
+  EVIDENCE: Founder/owner name visible on website
+  OR single Maps location + <50 reviews + small team mention
+  → 0 points if: Limited company name (A.Ş.) with no individual visible
+
++2: No visible AI/digital tool usage
+  EVIDENCE: Scan scraped website for keywords:
+  "yapay zeka", "AI", "otomasyon", "dijital dönüşüm", "ERP", "CRM",
+  "yazılım platform", "veri analizi", "machine learning"
+  → 0 points if: any of these terms found (they already have tools)
+  → +2 points if: none found (opportunity exists)
+
+---
+
+Score interpretation:
+10 = perfect ICP fit (all criteria met + strong evidence)
+6–9 = good fit (most criteria met)
+< 6 = poor fit → DISCARD, do not draft email
+```
+
+### Discard decision:
+If score < 6:
+- Record discard reason (e.g., "Enterprise size >100 employees", "Extensive AI usage already", "No Turkish operations")
+- Insert with `status: 'discarded'` (no email drafted)
+- Log reason for analytics
+
+If score ≥ 6:
+- Continue to Step 6 (email draft)
+
+**Output per company:**
+```json
+{
+  "business_name": "Mefamed Ltd.",
+  "url": "mefamed.com.tr",
+  "score": 8,
+  "status": "cold_ready" | "discarded",
+  "discard_reason": null | "reason if scored <6",
+  "scoring_breakdown": {
+    "intent_match": { "points": 2, "evidence": "Tıbbi cihaz dağıtıcı, hastanelere satış — matches intent" },
+    "turkey_confirmed": { "points": 2, "evidence": "İstanbul address + .com.tr domain + +90 phone" },
+    "team_size": { "points": 2, "evidence": "~20 employees (job listings on website)" },
+    "owner_operated": { "points": 2, "evidence": "Founder Mehmet Kaya visible on /about page" },
+    "no_ai_usage": { "points": 0, "evidence": "Website mentions 'dijital dönüşüm' — may already have tools" }
+  }
+}
+```
+
+---
+
+## STEP 6: AI Opportunities Analysis (Sonnet per qualifying company)
 
 **Model:** Sonnet
-**Input:** company_name, founder_name (if found), ai_opportunities, industry
-**Task:** Draft a Turkish cold outreach email specific to this company.
+**Input:** Scraped text + business type + team size + founder name
+**Task:** Identify 3 specific AI opportunities tailored to THIS company.
 
-**Rules:**
+Each opportunity must:
+- Have a **specific name** (not generic): "Otomatik fatura işleme", "Lead scoring", "Ürün yorum analizi"
+- Identify the **manual process** it replaces: "muhasebeciler tarafından el ile yapılan fatura girişi"
+- Estimate **hours/week saved**: "8–10 saat/hafta"
+- Be **concrete to their industry**: Don't suggest "customer sentiment analysis" to a tool supplier
+
+**Example:**
+```json
+{
+  "opportunity_1": {
+    "name": "Otomatik tedarikçi fatura işleme",
+    "process": "Mefamed'in Netsis ERP'ye el ile fatura girişi",
+    "hours_saved": "10 saat/hafta",
+    "reasoning": "İthalat-dağıtım süreçlerinde fatura hacmi yüksek"
+  },
+  "opportunity_2": {
+    "name": "Müşteri talep tahmini",
+    "process": "Satış ekibinin tarihsel verilerle manuel hata ve tahmin",
+    "hours_saved": "6 saat/hafta"
+  },
+  "opportunity_3": {
+    "name": "Tıbbi cihaz uyumluluk kontrol otomasyonu",
+    "process": "Her tedavi cihazının yasal uyumluluğu el ile kontrol edilmesi",
+    "hours_saved": "4 saat/hafta"
+  }
+}
+```
+
+---
+
+## STEP 7: Email Draft (Sonnet per qualifying company)
+
+**Model:** Sonnet
+**Input:** Company name, founder name (if found), ai_opportunities, industry
+**Task:** Draft Turkish cold outreach email.
+
+### Rules:
 
 **Salutation:**
 - If founder name found: `"Sayın {Founder First Name} Bey,"` (e.g., "Sayın Mehmet Bey,")
 - Otherwise: `"Sayın Yetkili,"`
 
-**Tone:** Formal "Siz" throughout (never "sen"). Professional but warm.
+**Tone:** Formal "Siz" throughout. Professional, warm, not pushy.
 
 **Subject line:**
 - Max 10 words
 - No question marks
-- Concrete and specific (reference something about their business)
+- Concrete, references something about their business
 - Examples:
   - "Tıbbi cihaz lojistiğinde 15 saat/hafta tasarruf"
   - "Fatura işleme sürelerini yarıya indirin"
-  - "Ravna: 45 dakikalık AI hazırlık görüşmesi"
+  - "45 dakikalık AI hazırlık görüşmesi"
 
 **Body:**
 - 150–200 words
-- Opening: Reference one specific detail from research (not generic)
-  - Example: "Mefamed'in İstanbul'da 20+ sağlık tesisine sunduğu dağıtım hizmetini gördük" (reference from research)
-- Value proposition: Mention ONE top AI opportunity briefly
-  - Example: "Özellikle siparişleri ve faturaları otomatik işlemek, haftada 12 saat boşaltabilir"
-- Close: Offer a specific time commitment
+- **Opening:** Reference one specific detail from research (never generic)
+  - Example: "Mefamed'in İstanbul'da 20+ sağlık tesisine sunduğu dağıtım hizmetini gördük"
+- **Value prop:** Mention ONE top AI opportunity
+  - Example: "Siparişleri ve faturaları otomatik işlemek, haftada 12 saat boşaltabilir"
+- **Close:** Offer specific next step
   - "Sizin için ücretsiz 45 dakikalık yapay zeka hazırlık görüşmesi yapabilirim"
   - "Hangisi size daha uygun: Çarşamba veya Perşembe?"
 
-**Forbidden words (Turkish business clichés):**
-- eşsiz, güçlü, yenilikçi, çözüm odaklı, dönüştürücü, ilericilik, başarı
+**Forbidden words (Turkish biz-speak clichés):**
+- eşsiz, güçlü, yenilikçi, çözüm odaklı, dönüştürücü, ilericilik, başarı, verimlilik, stratejik
 
-**Preferred verbs (concrete, action-oriented):**
+**Preferred verbs (concrete, action):**
 - azaltır, kurtarır, inşa eder, gösterir, hesaplar, otomatikleştirir, hızlandırır, tasarruf sağlar
 
-**Output format:**
+**Output:**
 ```
-SUBJECT: {subject line}
+SUBJECT: Tıbbi cihaz lojistiğinde 15 saat/hafta tasarruf
 
 BODY:
-{email body}
+Sayın Mehmet Bey,
+
+Mefamed'in İstanbul'da 20+ sağlık tesisine sunduğu dağıtım hizmetini gördük.
+
+Tıbbi cihaz ve medikal ekipmanın sevkiyat öncesi kontrol ve lojistik işlemleri önemli zaman alıyor. Özellikle siparişlerin Netsis ERP'ye girilmesi ve tedarikçi faturalarının işlenmesi, sizin ekibinin her hafta 15 saatini alıyor.
+
+Bunun yerine bu işlemleri otomatikleştiren bir sistem kurabiliriz. İlk adım olarak Ravna'da ücretsiz bir 45 dakikalık yapay zeka hazırlık görüşmesi yapıyoruz. Sizin için fırsat olan başka otomasyonları da tanıyacaksınız.
+
+Hangisi size daha uygun: Çarşamba veya Perşembe günü 10:00?
+
+Saygılarımla,
+Ugur Üzel
+Ravna — Şirketinizin yarı-zamanlı yapay zeka direktörü
 ```
 
 ---
 
-## STEP 6: Supabase Insert — Store ALL Evaluated Companies
+## STEP 8: Supabase Insert — Store ALL Companies
 
-**Model:** None (direct SQL via Supabase)
-**Input:** All analyzed companies (both qualifying AND discarded)
-**Tools:** Supabase insert + update
-
-**Rule:** ALL companies get inserted, not just qualified ones. This prevents re-discovering the same company later.
+**Model:** None (direct SQL)
+**Tools:** Supabase (insert)
+**Rule:** ALL companies inserted (cold_ready OR discarded). Prevents re-discovery.
 
 ### For score ≥ 6 (cold_ready):
 
 ```json
 {
   "name": "Mefamed Ltd.",
-  "url": "mefamed.com.tr",
+  "url": "mefamed.com.tr",  // normalized (no www, no protocol)
+  "phone": "+90 (212) 123-4567",
+  "address": "Levent, İstanbul",
+  "email": "info@mefamed.com.tr",
   "city": "İstanbul",
   "industry": "tıbbi cihaz dağıtımı",
   "ai_opportunities": [
@@ -363,13 +467,11 @@ BODY:
   ],
   "score": 8,
   "status": "cold_ready",
-  "email_draft": "SUBJECT: Tıbbi cihaz lojistiğinde 15 saat/hafta tasarruf\n\nSayın Mehmet Bey,\n\n...",
-  "next_follow_up": "2026-03-18T08:00:00Z",
+  "email_draft": "SUBJECT: ...\n\nBODY: ...",
+  "next_follow_up": "2026-03-19T08:00:00Z",  // now() + 3 days
   "search_keyword": "tıbbi cihaz distributor İstanbul"
 }
 ```
-
-**next_follow_up calculation:** Use SQL `now() + interval '3 days'` — NOT a hardcoded timestamp string.
 
 ### For score < 6 (discarded):
 
@@ -377,12 +479,15 @@ BODY:
 {
   "name": "EnterpriseCorp A.Ş.",
   "url": "enterprisecorp.com.tr",
+  "phone": null,
+  "address": null,
+  "email": null,
   "city": "Ankara",
   "industry": "kurumsal yazılım",
   "ai_opportunities": [
     { "reason": "Enterprise size >100 employees — outside ICP" }
   ],
-  "score": 3,
+  "score": 2,
   "status": "discarded",
   "email_draft": null,
   "next_follow_up": null,
@@ -390,52 +495,75 @@ BODY:
 }
 ```
 
-**Insert process:**
-1. For each company analyzed (qualifying or discarded):
-   - Check if URL already exists in DB (should be rare given Step 2 dedup)
-   - If exists: SKIP (don't update)
-   - If not exists: INSERT
-2. Collect insert results (success count, errors)
-3. Return summary
+**Insert logic:**
+1. For each analyzed company (qualifying or discarded):
+   - Check if URL already in DB (rare post-dedup)
+   - If exists: skip
+   - If not exists: insert
+2. Return counts: N inserted, M skipped (already exist), K errors
 
 ---
 
-## STEP 7: Telegram Summary + Completion
+## STEP 9: Telegram Notification (Fixed with jq + MarkdownV2)
 
-**Model:** None (Bash curl to Telegram API)
-**Tools:** Bash curl
+**Model:** None (Bash curl)
+**Tools:** Bash
 **Endpoint:** `https://api.telegram.org/bot{TOKEN}/sendMessage`
 
-**Required:** TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID in .env.local
-
-**Message format depends on outcome:**
+**Fix:** Use `jq` to build JSON body, eliminates newline collapse.
 
 ### ON SUCCESS:
+
+```bash
+MESSAGE=$(cat <<'EOF'
+🔍 *Prospect Research Tamamlandı*
+
+✅ *Eklenen adaylar \(N\):*
+  • Mefamed Ltd\. — İstanbul \| 8/10
+  • Acme Medikal — İzmir \| 7/10
+
+❌ *Elenenler \(M\):*
+  • Dişçi Kliniği \(intent dışı\)
+  • Büyük Holding A\.Ş\. \(kurumsal — 250 yorum\)
+
+📊 *En yüksek skor:* Mefamed Ltd\. \| 8/10
+📞 *İletişim verisi:* N telefon, M e\-posta bulundu
+📅 *Sonraki takip:* 2026\-03\-18
+🔑 *Arama:* tıbbi cihaz distributor İstanbul
+EOF
+)
+
+jq -n \
+  --arg chat_id "$TELEGRAM_CHAT_ID" \
+  --arg text "$MESSAGE" \
+  '{chat_id: $chat_id, text: $text, parse_mode: "MarkdownV2"}' | \
+curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+  -H "Content-Type: application/json" \
+  -d @-
 ```
-🔍 Prospect Research tamamlandı
 
-✓ {N} aday eklendi:
-  • Mefamed Ltd. (İstanbul, 8/10)
-  • Acme Medical (İzmir, 7/10)
+**MarkdownV2 escaping required for:**
+- `.` → `\.`
+- `-` → `\-`
+- `(` `)` → `\(` `\)`
+- `|` → `\|`
+- `{` `}` → `\{` `\}`
+- `!` `#` `+` `=` `<` `>` → escape with backslash
 
-✗ {M} elenendi (ICP mismatch)
+### ON PARTIAL FAILURE:
 
-En yüksek skor: Mefamed Ltd. | 8/10
-Sonraki takip: 2026-03-18
-```
-
-### ON PARTIAL FAILURE (some companies errored, some succeeded):
 ```
 ⚠️ Prospect Research — kısmi sonuç
 
-✓ {N} eklendi, ✗ {M} elenendi
-⚠️ {K} hata oluştu
+✅ N eklendi, ❌ M elenendi
+⚠️ K hata oluştu
 
-Hata özeti: [company names and error messages]
-Önerilendeyim: hata olan şirketleri daha sonra tekrar deneyiniz
+Hata özeti: [company names and error types]
+Önerilen adım: hata olan şirketleri daha sonra tekrar deneyiniz
 ```
 
-### ON COMPLETE FAILURE (nothing processed):
+### ON COMPLETE FAILURE:
+
 ```
 ❌ Prospect Research başarısız
 
@@ -449,37 +577,39 @@ Nedenler:
 Önerilen adım: anahtar kelimeyi değiştirip tekrar deneyiniz
 ```
 
-**Telegram API call (Bash curl):**
-```bash
-curl -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-  -H "Content-Type: application/json" \
-  -d "{\"chat_id\": \"${TELEGRAM_CHAT_ID}\", \"text\": \"<message>\", \"parse_mode\": \"HTML\"}"
-```
+---
+
+## RATE LIMITING & COST
+
+**Outscraper:** 50 records max per run (~$0.15 cost)
+
+**Contact extraction:** Website scraping (Playwright) × count companies. No additional cost.
+
+**Subagent spawning:** count × 1 agents (parallel). Default count=10, configurable.
+
+**Safety:** If count > 50, cap at 50.
 
 ---
 
-## Rate Limiting & Safety
+## Autonomous Operation
 
-**Brave Search budget:** 30 calls max per skill invocation.
-- Discovery: 3 calls
-- Research: count × 2 calls (max 5 × 2 = 10)
-- Total: 13 calls (with 17-call buffer)
+For unattended/cron runs:
+```bash
+claude --dangerously-skip-permissions
+```
 
-**Subagent spawning:** Max 10 simultaneous Haiku agents (5 companies × 2 agents each).
-- If count > 5: reduce to 5
-- If Haiku spawn limit hit: queue companies and process in batches
-
-**Context window risk:** Long website text (1500 words) × 5 companies = 7500 words of context. Safe within Sonnet/Haiku limits.
-
-**Error recovery:** If a single company's research fails (Puppeteer timeout), continue with Brave-only data. Don't fail the entire batch.
+Bypasses permission dialogs for this session and all subagents. Needed for Orchestrator scheduling. Requires updated `.claude/settings.json` with tool allowlist.
 
 ---
 
 ## Checklist Before Running
 
-- [ ] `.env.local` has `TELEGRAM_CHAT_ID` filled
-- [ ] Supabase schema applied (prospect_status includes 'discarded', url UNIQUE, search_keyword exists)
-- [ ] Test with real keyword + city: `keyword: "tıbbi cihaz", city: "İstanbul", count: 2`
-- [ ] Verify email_draft is well-formed Turkish
-- [ ] Check Telegram notification arrives
-- [ ] Verify Supabase inserts have normalized URLs (no `http://`, no `www.`)
+- [ ] `.env.local` has `OUTSCRAPER_API_KEY` filled
+- [ ] `.env.local` has `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` filled
+- [ ] Supabase schema applied (phone, address, email columns added)
+- [ ] `.claude/settings.json` updated with Playwright + Bash(*) + Supabase MCP
+- [ ] Test with real data: `keyword: "tıbbi cihaz distributor", city: "İstanbul", count: 3`
+- [ ] Verify email_draft is well-formed Turkish (no clichés, formal "Siz")
+- [ ] Verify contact data (phone, address, email) populated in DB inserts
+- [ ] Verify Telegram notification arrives with proper formatting
+

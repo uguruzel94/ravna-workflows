@@ -6,9 +6,9 @@
 
 ## CURRENT STATUS
 
-**Phase:** First Skill Implementation (prospect-research v2)
-**Active skill:** prospect-research v2 (discovery + research combined)
-**Overall system:** 1/8 skills code-complete (needs testing)
+**Phase:** First Skill Implementation (prospect-research v3)
+**Active skill:** prospect-research v3 (Outscraper + two-stage filtering + evidence-based ICP)
+**Overall system:** 1/8 skills in development (v3 schema + SKILL.md complete, testing pending)
 
 ---
 
@@ -24,18 +24,20 @@
 - [x] Telegram bot created (via BotFather) + chat ID filled (657474307)
 - [x] Resend account created + domain verified
 
-### Schema Updates ✅ (this session)
-- [x] `prospect_status` enum: added `'discarded'` value
-- [x] `prospects` table: added `search_keyword TEXT` column
-- [x] `prospects` table: added `url UNIQUE` constraint
-- [x] `prospects` table: added `idx_prospects_url` index
-- [x] `.claude/settings.json`: created with `Bash(curl:*)` permission
+### Schema Updates ✅
+- [x] `prospect_status` enum: added `'discarded'` value (session 2)
+- [x] `prospects` table: added `search_keyword TEXT` column (session 2)
+- [x] `prospects` table: added `url UNIQUE` constraint (session 2)
+- [x] `prospects` table: added `idx_prospects_url` index (session 2)
+- [x] `prospects` table: added `phone TEXT`, `address TEXT`, `email TEXT` columns (session 3)
+- [x] `.claude/settings.json`: updated with `Bash(*)` + Playwright + Supabase MCP permissions (session 3)
 
 ### Skills
 - [x] `prospect-research/SKILL.md` v2 — written (discovery + research combined)
+- [x] `prospect-research/SKILL.md` v3 — written (Outscraper + two-stage filtering + evidence-based ICP)
 - [x] `prospect-research/evals.json` — created with 3 test cases
-- [ ] `prospect-research/SKILL.md` — tested with real data
-- [ ] `prospect-research/SKILL.md` — email tone verified
+- [ ] `prospect-research/SKILL.md` v3 — tested with real data (Outscraper API key needed)
+- [ ] `prospect-research/SKILL.md` v3 — email tone verified
 - [ ] `followup-crm/SKILL.md` — written
 - [ ] `newsletter-curator/SKILL.md` — written
 - [ ] `orchestrator/SKILL.md` — written
@@ -48,24 +50,29 @@
 
 ## LAST SESSION
 
-**Date:** 2026-03-15
+**Date:** 2026-03-16
 **What was done:**
-- Updated schema.sql: added 'discarded' enum, search_keyword column, UNIQUE url constraint, url index
-- Created .claude/settings.json with Bash(curl:*) permission
-- Wrote .claude/skills/prospect-research/SKILL.md v2 with full 7-step flow (discovery, dedup, parallel research, scoring, email, insert, telegram)
-- Created evals.json with 3 test cases
-- Updated ARCHITECTURE.md with new input schema and discovery step
-- Updated CLAUDE.md CURRENT FOCUS section with v2 description
-- Updated .env.local with TELEGRAM_CHAT_ID=657474307
+- Created git branch `feature/prospect-research-v3`
+- Updated `.claude/settings.json` with Playwright + Bash(*) + Supabase MCP permissions
+- Applied Supabase migration: added `phone TEXT`, `address TEXT`, `email TEXT` columns to prospects table
+- Completely rewrote `.claude/skills/prospect-research/SKILL.md` for v3:
+  * Outscraper Google Maps API for discovery (replaces Brave Search)
+  * Two-stage filtering: Stage 1 (Maps metadata pre-filter), Stage 2 (website scraping only for survivors)
+  * Evidence-required ICP scoring rubric (each point needs proof)
+  * Intent-driven category matching (replaces hardcoded rules)
+  * Contact data extraction: phone (Maps) + address (Maps) + email (website)
+  * Fixed Telegram formatting with jq + MarkdownV2
+  * No hardcoded parallelism cap (default 10, user-controlled)
 
-**Decisions made:**
-- Input schema changed from `{business_name, url, city}` to `{keyword, city, count, industry?}` to enable full discovery pipeline
-- Discovery uses 3 Brave searches, filters out directories/social/news sites
-- count max=5 (10 Haiku agents) to prevent context overload and rate limit violations
-- ALL companies inserted (cold_ready or discarded) to prevent re-discovery
+**Decisions confirmed:**
+- Outscraper cost: ~$0.003/record, 50-record hard limit per run (~$0.15 max)
+- Intent field lets clients describe ICP in plain language (no SKILL.md editing needed)
+- Pre-filtering eliminates 40-60% of records before scraping (cost/time efficiency)
+- Evidence-based scoring ensures quality > quantity (no more all-10 scores)
+- MarkdownV2 escaping in Telegram via jq (fixes newline collapse bug)
 
-**Problems hit:**
-- None. Plan was comprehensive and implementation straightforward.
+**Problems encountered:**
+- None. v3 design was pre-approved; implementation straightforward.
 
 ---
 
@@ -73,8 +80,8 @@
 
 | Blocker | Impact | Resolution needed |
 |---------|--------|-------------------|
-| Supabase schema not yet applied to live DB | Can't test SKILL.md until schema is live | Apply migration: ALTER TYPE prospect_status ADD 'discarded'; ALTER TABLE prospects ADD UNIQUE(url), etc. |
-| SKILL.md not yet tested with real data | Don't know if Brave discovery actually works | Test with: keyword="tıbbi cihaz distributor", city="İstanbul", count=2 |
+| Outscraper API key not in `.env.local` | Can't test v3 discovery (Maps API endpoint) | Sign up at outscraper.com, get API key, add to `.env.local` as `OUTSCRAPER_API_KEY` |
+| SKILL.md v3 not yet tested with real data | Don't know if Outscraper integration works end-to-end | Test with: keyword="tıbbi cihaz distributor", city="İstanbul", count=3 |
 
 ---
 
@@ -86,19 +93,18 @@ None at this time. Schema and SKILL.md design is finalized.
 
 When you open Claude Code next:
 
-> 1. Apply Supabase schema migrations:
->    - ALTER TYPE prospect_status ADD VALUE 'discarded';
->    - ALTER TABLE prospects ADD COLUMN search_keyword TEXT;
->    - ALTER TABLE prospects ADD UNIQUE(url);
->    - CREATE INDEX idx_prospects_url ON prospects(url);
+> 1. Get Outscraper API key:
+>    - Sign up at https://outscraper.com
+>    - Create API key (free tier: 500 records/month)
+>    - Add to `.env.local`: `OUTSCRAPER_API_KEY=os-...`
 >
-> 2. Test prospect-research SKILL.md with real data:
->    - Input: { keyword: "tıbbi cihaz distributor", city: "İstanbul", count: 2 }
->    - Watch for: Discovery finds companies, dedup works, email draft is Turkish, Telegram notifies
+> 2. Test prospect-research SKILL.md v3 with real data:
+>    - Input: { keyword: "tıbbi cihaz distributor", city: "İstanbul", count: 3, intent: "Tıbbi cihaz distribütörleri, hastanelere satış. Dişçi, eczane değil." }
+>    - Watch for: Maps discovery works, pre-filtering eliminates non-matches, website scraping extracts email, ICP scores vary, Telegram formatted correctly
 >
-> 3. Debug any failures and tune email tone if needed
+> 3. Verify contact data (phone, address, email) in Supabase inserts
 >
-> 4. Document results in evals.json
+> 4. Tune email tone if needed and document in evals.json
 
 ---
 
