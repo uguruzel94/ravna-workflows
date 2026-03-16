@@ -1,6 +1,6 @@
 # STATE.md — ravna-workflows
 **Rewrite this file at the end of every session. Do not append — replace.**
-**Last updated:** 2026-03-17 (session 8)
+**Last updated:** 2026-03-17 (session 9)
 
 ---
 
@@ -123,7 +123,8 @@
 
 | Blocker | Impact | Resolution needed |
 |---------|--------|-------------------|
-| ✅ .env.local not sourced in bash | Outscraper API key was empty → silent API failures | Fixed in session 9: Added `source .env.local &&` prefix to all Bash commands needing env vars. Documented in CLAUDE.md. |
+| ✅ .env.local vars not exported to child processes | Repeated skill failures: OUTSCRAPER_API_KEY & SUPABASE_KEY appeared "missing" despite being in .env.local | Fixed in session 9: Added `export` prefix to all 8 vars in .env.local. Root cause: `source .env.local` sets shell-local vars but doesn't export them; child processes (curl, subagents) couldn't see them. Test was wrong (`env | grep` only shows exported vars). Updated CLAUDE.md + SKILL.md to document this. |
+| ✅ Supabase MCP project_id not documented | Skill had no way to know which project_id to use → guessed wrong → permission denied | Fixed in session 9: Added `SUPABASE_PROJECT_ID=zbzhyhpphsugepwcqmvg` to .env.local. Updated CLAUDE.md + SKILL.md to document it as required. |
 | ✅ SKILL.md v3 async API bug | Discovery was returning Pending status forever | Fixed in session 4: Switched to correct POST /google-maps-search endpoint with proper JSON body (commit e61dbe4) |
 | ✅ Dedup gaps (v3.1–3.2) | CDC DEMİR ÇELİK kept reappearing | Fixed in session 8: Moved dedup from STEP 3 → new STEP 1.5 (pre-check before filtering). Added buffering strategy. Cross-query dedup now working. |
 | prospect-research v3.3 ready for production | All schema fixes + dedup fixes + buffering implemented | Ready for live testing. 10 companies returned in Kemalpaşa test. Next: run full pipeline (STEP 2-9) and insert to DB. |
@@ -138,27 +139,30 @@
 
 When you open Claude Code next:
 
-> **Priority 1: Get Outscraper API key & test prospect-research v3.3 end-to-end**
-> 1. Sign up at https://outscraper.com, get API key (free: 500 records/month)
-> 2. Add to `.env.local`: `OUTSCRAPER_API_KEY=os-...`
-> 3. Run prospect-research twice with overlapping results:
->    - Run 1: `{keyword: "demir çelik ticareti", location: "Kemalpaşa", count: 3}`
->    - Run 2: `{keyword: "çelik satıcı", location: "Kemalpaşa", count: 3}`
->    - Verify: CDC caught at STEP 1.5 on run 2 (silent, no Telegram mention)
->    - Verify: DB shows 1 CDC record, not 2 (no duplicates)
->    - Verify: Telegram shows correct pre_filter_discard companies in run 1, none in run 2 overlap
-> 4. Verify: prospects inserted with score, contact data, ai_opportunities
-> 5. Verify: email drafts are good tone (formal "Siz", no clichés)
+> **Priority 1: Run prospect-research v3.3 end-to-end (env var fix now deployed)**
+> - ✅ .env.local now has `export` on all vars + SUPABASE_PROJECT_ID added
+> - ✅ CLAUDE.md + SKILL.md updated with env var documentation + fixes
+> - Ready to run: `keyword: "demir çelik ticareti", location: "Kemalpasa", count: 5`
+> - Verify: All 5 companies inserted to DB with score, email_draft, ai_opportunities, contact data (phone, address, email)
+> - Verify: Telegram notification sent with correct formatting (MarkdownV2)
+> - Verify: searches table logged with result_count and last_searched_at
 >
-> **Priority 2: Commit v3.3 fixes**
-> - After verification passes: `git commit -m "fix: prospect-research SKILL.md v3.3 — full dedup stress test + cross-query prevention"`
+> **Priority 2: Test cross-query dedup (session 8 fix validation)**
+> - After first run populates DB with Kemalpasa prospects:
+> - Run 2: `keyword: "çelik satıcı", location: "Kemalpasa", count: 5`
+> - Verify: Known companies removed at STEP 1.5 (silent filtering, no Telegram mention of duplicates)
+> - Verify: DB shows no duplicate records (same company not in prospects table twice)
 >
-> **Priority 3: Validate company-lookup with prospect-research data**
+> **Priority 3: Commit infrastructure fix**
+> - `git commit -m "fix: .env.local export + SUPABASE_PROJECT_ID — env var sourcing now reliable"`
+> - Updates: .env.local (export prefix), CLAUDE.md (env var doc), SKILL.md (Supabase project_id req)
+>
+> **Priority 4: Validate company-lookup with prospect-research data**
 > - Once prospect-research populates DB with real data, test company-lookup queries
 > - Verify Haiku parser works for Turkish/English natural language
 > - Test all 7 verification cases from SKILL.md
 >
-> **Priority 4: Build followup-crm SKILL.md (P2)**
+> **Priority 5: Build followup-crm SKILL.md (P2)**
 > - Depends on: prospect-research + company-lookup both validated
 > - Functionality: status updates, follow-up scheduling, manual contact logging
 
@@ -176,6 +180,7 @@ When you open Claude Code next:
 
 | Date | Task | Model | Approx cost |
 |------|------|-------|-------------|
-| 2026-03-17 | Dedup stress test + v3.3 fixes + schema updates | Haiku | $0.01 |
+| 2026-03-17 (session 8) | Dedup stress test + v3.3 fixes + schema updates | Haiku | $0.01 |
+| 2026-03-17 (session 9) | Env var debugging + .env.local export fix + SUPABASE_PROJECT_ID setup + CLAUDE.md + SKILL.md updates | Haiku | $0.01 |
 
 **Monthly budget target:** Keep automated daily costs under $0.50/day (~$15/month)

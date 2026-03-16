@@ -53,10 +53,13 @@ description: >
 
 ## STEP 0: Setup & Environment
 
-**Required env vars** (in `.env.local`):
+**Required env vars** (in `.env.local`, all with `export` prefix):
 - `OUTSCRAPER_API_KEY` — Outscraper account (https://outscraper.com). Free tier: 500 records/month. Cost: ~$0.003/record (~$0.15 max per run of 50 records).
 - `TELEGRAM_BOT_TOKEN` — Telegram bot (for notifications)
 - `TELEGRAM_CHAT_ID` — Chat ID for status messages
+- `SUPABASE_PROJECT_ID` — Required for Supabase MCP tool calls. Value: `zbzhyhpphsugepwcqmvg` (extracted from SUPABASE_URL subdomain). **Always use this exact value when calling `mcp__plugin_supabase_supabase__execute_sql` or any Supabase MCP tool.**
+
+**CRITICAL — env var sourcing:** Always run `source /Users/uguruzel/Vibe/ravna-workflows/.env.local` before any bash command that uses these vars. The `.env.local` file uses `export` so all vars are available to child processes.
 
 **If `OUTSCRAPER_API_KEY` not set:**
 - Log: `"⚠️ Outscraper unavailable — running degraded mode via Brave Search"`

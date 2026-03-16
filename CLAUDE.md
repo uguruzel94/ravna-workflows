@@ -86,15 +86,18 @@
 - Schema: `supabase/schema.sql`
 
 ### Environment variables
-Stored in `.env.local` (never committed):
+Stored in `.env.local` (never committed). **All vars use `export` prefix** — required for child processes (curl, jq, etc.) to inherit them:
 ```
-TELEGRAM_BOT_TOKEN=
-TELEGRAM_CHAT_ID=
-RESEND_API_KEY=
-SUPABASE_URL=
-SUPABASE_KEY=
-BRAVE_SEARCH_API_KEY=
+export TELEGRAM_BOT_TOKEN=
+export TELEGRAM_CHAT_ID=
+export RESEND_API_KEY=
+export SUPABASE_URL=
+export SUPABASE_KEY=
+export SUPABASE_PROJECT_ID=zbzhyhpphsugepwcqmvg   ← Supabase MCP requires this
+export BRAVE_SEARCH_API_KEY=
+export OUTSCRAPER_API_KEY=
 ```
+**Why `export`:** `source .env.local` without `export` sets shell-local vars only — they don't appear in `env` and aren't inherited by child processes. Adding `export` fixes this permanently.
 
 ### Plugins
 - **Claude Code Superpowers** (official plugin) — check what commands and tools this adds before starting a new task. Run the plugin's help command to see what's available.
