@@ -180,7 +180,7 @@ JOB=$(curl -s -X POST "https://api.app.outscraper.com/google-maps-search" \
   -H "X-API-KEY: ${OUTSCRAPER_API_KEY}" \
   -H "Content-Type: application/json" \
   -H "client: Python SDK" \
-  -d "{\"query\": [\"tıbbi cihaz distributor İstanbul\"], \"organizationsPerQueryLimit\": 3, \"language\": \"tr\"}")
+  -d "{\"query\": [\"tıbbi cihaz distributor İstanbul\"], \"organizationsPerQueryLimit\": $(( count * 2 > 50 ? 50 : count * 2 )), \"language\": \"tr\"}")
 
 JOB_ID=$(echo "$JOB" | jq -r '.id')
 
@@ -204,7 +204,7 @@ done
 - Always separate `source .env.local` from curl on different lines
 - Specify query as JSON array: `\"query\": [\"search term\"]`
 
-**Cost guard:** Request returns N results directly per the `organizationsPerQueryLimit` parameter.
+**Cost guard & buffering:** Request `organizationsPerQueryLimit = min(count * 2, 50)` to create a buffer for duplicate filtering in STEP 1.5. The Outscraper API returns results across multiple searches, and known companies (like CDC DEMİR ÇELİK) re-appear in different keyword searches of the same area. By requesting double, STEP 1.5 can filter out known-company overlap while still yielding `count` new prospects. Cost: ~$0.003/record; for count=5 with buffer=10, worst case ~$0.015 extra if half are duplicates.
 
 **Why async?** The Outscraper API processes maps/search asynchronously by design. Job ID is returned immediately, results polled after processing.
 
@@ -240,6 +240,67 @@ done
 - If API key missing: log warning, fall back to Brave searches (log: "degraded mode")
 - If API returns error: fall back to Brave searches
 - If no results found: return empty array, continue (don't fail)
+
+---
+
+## STEP 1.5: Already-Seen Pre-check (Cross-Query Deduplication)
+
+**Model:** None (direct SQL)
+**Tools:** Supabase execute_sql
+**Cost:** Free (1-2 queries)
+
+**Purpose:** Prevent companies that already exist in the DB (from ANY previous search) from being re-processed. This catches the case where CDC DEMİR ÇELİK was found in a "demir çelik ticareti" search and re-appears in a different keyword search like "çelik satıcı" in the same city.
+
+**Task:** Before STEP 2 filtering, remove already-known companies from the Outscraper results.
+
+### Name and URL Normalization
+
+**Name normalization:**
+1. Lowercase: `"CDC DEMİR ÇELİK"` → `"cdc demir çelik"`
+2. Strip common suffixes: `Ltd.`, `Şti.`, `A.Ş.`, `LTD.ŞTİ.`, `SAN VE TİC`, `ŞUBE`
+3. Strip extra whitespace
+
+**URL normalization:**
+1. Strip protocol: `https://mefamed.com.tr` → `mefamed.com.tr`
+2. Strip `www.`: `www.mefamed.com.tr` → `mefamed.com.tr`
+3. Strip trailing slash: `mefamed.com.tr/` → `mefamed.com.tr`
+
+### Pre-check Query
+
+**For each company from Outscraper:**
+
+1. Build list of all normalized company names
+2. Build list of all normalized URLs
+3. Query DB:
+
+```sql
+SELECT id, name, url FROM prospects
+WHERE LOWER(REGEXP_REPLACE(REGEXP_REPLACE(name, '\s+(Ltd\.|Şti\.|A\.Ş\.|LTD\.ŞTİ\.|SAN VE TİC|ŞUBE)$', '', 'i'), '\s+', ' ', 'g'))
+      IN (list_of_normalized_names)
+   OR (url IS NOT NULL AND url IN (list_of_normalized_urls));
+```
+
+4. For each match: mark company as "already_known" → **remove from processing queue entirely**
+5. Log: `"N already-known companies removed from batch"`
+
+### Why This Step?
+
+**STEP 0.9** prevents re-calling Outscraper for the **exact same keyword+location** (cost guard).
+
+**STEP 1.5** handles cross-query overlap: when you search "demir çelik ticareti İzmir" one day and "çelik satıcı İzmir" the next, Outscraper returns overlapping company names. Without STEP 1.5, CDC appears again. With STEP 1.5, it's silently filtered out before STEP 2.
+
+### Output
+
+```json
+{
+  "batch_in": 12,
+  "already_known_removed": 2,
+  "batch_out": 10,
+  "removed_names": ["CDC DEMİR ÇELİK", "Acme Çelik Ltd."]
+}
+```
+
+**Continue to STEP 2 with remaining companies only.**
 
 ---
 
@@ -319,9 +380,11 @@ SQL:
 INSERT INTO prospects (name, phone, address, city, url, industry, score, status,
   ai_opportunities, email_draft, search_keyword, created_at)
 VALUES (?, ?, ?, ?, NULL, ?, 0, 'pre_filter_discard',
-  '["reason": "?"]'::jsonb, NULL, ?, NOW())
-ON CONFLICT DO NOTHING;
+  jsonb_build_array(jsonb_build_object('reason', ?)), NULL, ?, NOW())
+ON CONFLICT(LOWER(REGEXP_REPLACE(REGEXP_REPLACE(name, '\s+(Ltd\.|Şti\.|A\.Ş\.|LTD\.ŞTİ\.|SAN VE TİC|ŞUBE)$', '', 'i'), '\s+', ' ', 'g'))) DO NOTHING;
 ```
+
+**Note on conflict:** With STEP 1.5 pre-check in place, discards at STEP 2 are guaranteed to be new (not seen before). The `ON CONFLICT DO NOTHING` serves as a safety net for edge cases. If removing, rely on STEP 1.5 as the primary guard.
 
 ---
 
@@ -361,7 +424,7 @@ WHERE LOWER(REGEXP_REPLACE(REGEXP_REPLACE(name, '\s+(Ltd\.|Şti\.|A\.Ş\.|LTD\.�
 - Check if either the URL OR the normalized name already exists in DB
 - If yes: skip (mark as "duplicate")
 - If no: add to research queue
-- This catches companies without websites by matching their name, preventing CDC DEMİR ÇELİK from re-appearing
+- This catches edge cases where companies WITH websites might duplicate across different batches. For companies WITHOUT websites (like no-website discards), cross-query dedup is handled in STEP 1.5
 
 **Keep top `count` new companies** after dedup.
 
@@ -803,22 +866,23 @@ Bypasses permission dialogs for this session and all subagents. Needed for Orche
 
 ---
 
-## Full 11-Step Execution Flow
+## Full 12-Step Execution Flow
 
 **When invoked, this skill executes ALL steps automatically:**
 
 1. **STEP 0.5** — Parse natural language input (Turkish or English) → JSON schema
 2. **STEP 0.9** — Check if (keyword + location) already searched → ask user if repeat is OK
-3. **STEP 1** — Run Outscraper discovery (async job + polling)
-4. **STEP 2** — Pre-filter by Maps metadata
-5. **STEP 3** — Dedup against Supabase
-6. **STEP 4** — Website scraping + email extraction (parallel)
-7. **STEP 5** — ICP scoring (Sonnet per company)
-8. **STEP 6** — AI opportunities analysis
-9. **STEP 7** — Email draft (Turkish or English, matching input language)
-10. **STEP 8** — **Insert all companies into Supabase** (cold_ready OR discarded)
-11. **STEP 9** — **Send Telegram notification** with results
-12. **STEP 9.5** — **Log search to `searches` table** (upsert keyword + location + result count)
+3. **STEP 1** — Run Outscraper discovery with buffer (async job + polling)
+4. **STEP 1.5** — Cross-query dedup: remove already-seen companies (name + URL match)
+5. **STEP 2** — Pre-filter by Maps metadata (intent matching + hard filters)
+6. **STEP 3** — Dedup against Supabase (URL + name for Stage 1 survivors only)
+7. **STEP 4** — Website scraping + email extraction (parallel)
+8. **STEP 5** — ICP scoring (Sonnet per company)
+9. **STEP 6** — AI opportunities analysis
+10. **STEP 7** — Email draft (Turkish or English, matching input language)
+11. **STEP 8** — **Insert all companies into Supabase** (cold_ready OR discarded)
+12. **STEP 9** — **Send Telegram notification** with results
+13. **STEP 9.5** — **Log search to `searches` table** (upsert keyword + location + result count)
 
 **IMPORTANT:** Steps 8–9.5 execute automatically. No manual intervention needed after invocation.
 

@@ -8,7 +8,8 @@ CREATE TYPE prospect_status AS ENUM (
   'won',
   'lost',
   'paused',
-  'discarded'
+  'discarded',
+  'pre_filter_discard'
 );
 
 CREATE TYPE interaction_type AS ENUM (
@@ -40,6 +41,9 @@ CREATE TABLE prospects (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
   url TEXT UNIQUE,
+  phone TEXT,
+  address TEXT,
+  email TEXT,
   city TEXT,
   industry TEXT,
   ai_opportunities JSONB,
@@ -137,6 +141,16 @@ CREATE TABLE pipeline_reports (
   content JSONB,
   created_at TIMESTAMP DEFAULT now(),
   updated_at TIMESTAMP DEFAULT now()
+);
+
+CREATE TABLE searches (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  keyword TEXT NOT NULL,
+  location TEXT NOT NULL,
+  count INTEGER,
+  results_count INTEGER,
+  last_searched_at TIMESTAMP DEFAULT now(),
+  UNIQUE(keyword, location)
 );
 
 -- Indexes
