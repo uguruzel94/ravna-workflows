@@ -1,6 +1,6 @@
 # STATE.md — ravna-workflows
 **Rewrite this file at the end of every session. Do not append — replace.**
-**Last updated:** 2026-03-15 (session 2)
+**Last updated:** 2026-03-16 (session 3)
 
 ---
 
@@ -72,7 +72,7 @@
 - MarkdownV2 escaping in Telegram via jq (fixes newline collapse bug)
 
 **Problems encountered:**
-- None. v3 design was pre-approved; implementation straightforward.
+- Outscraper Maps API returns async responses by default (status: "Pending"). Required polling loop which wasn't in SKILL.md. Fixed: added `async=false` parameter + `--max-time 90` to curl command in STEP 1.
 
 ---
 
@@ -81,7 +81,8 @@
 | Blocker | Impact | Resolution needed |
 |---------|--------|-------------------|
 | Outscraper API key not in `.env.local` | Can't test v3 discovery (Maps API endpoint) | Sign up at outscraper.com, get API key, add to `.env.local` as `OUTSCRAPER_API_KEY` |
-| SKILL.md v3 not yet tested with real data | Don't know if Outscraper integration works end-to-end | Test with: keyword="tıbbi cihaz distributor", city="İstanbul", count=3 |
+| SKILL.md v3 async API bug | Discovery was returning Pending status forever | ✅ Fixed: Added `async=false` + `--max-time 90` to curl command (commit bd3ea59) |
+| SKILL.md v3 not yet tested with real data | Don't know if Outscraper integration works end-to-end | Ready to test once API key available. Test with: keyword="tıbbi cihaz distributor", city="İstanbul", count=3 |
 
 ---
 
