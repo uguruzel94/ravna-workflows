@@ -108,6 +108,48 @@ description: >
 
 ---
 
+## STEP 0.9: Search Deduplication — Prevent Re-Searching Same Areas
+
+**Model:** None (direct SQL)
+**Tools:** Supabase execute_sql
+**Cost:** Free (1 query)
+
+**Task:** Check if this `keyword` + `location` combination has already been searched.
+
+**SQL:**
+```sql
+SELECT results_count, last_searched_at FROM searches
+WHERE keyword = ? AND location = ?;
+```
+
+**Logic:**
+1. After parsing input in STEP 0.5, immediately check `searches` table
+2. If found:
+   - Log: `"⏭️ Bu arama daha yapılmış: keyword='{keyword}', location='{location}' ({results_count} sonuç, son arama: {last_searched_at})"`
+   - Ask user: `"Yine de devam etmek ister misin? (Outscraper API maliyeti doğacak)"`
+   - If yes → continue to STEP 1
+   - If no → abort gracefully
+3. If not found:
+   - Continue to STEP 1 normally
+
+**Why this matters:**
+- Outscraper costs ~$0.003/record. Re-searching the same area wastes money.
+- If you found "demir çelik ticareti İzmir" last week with 10 results, this week's version will have the same companies (mostly).
+- Dedup at company level (STEP 3) filters URLs, but STEP 0.9 prevents the entire search.
+
+**Output:**
+```json
+{
+  "search_exists": true,
+  "keyword": "demir çelik ticareti",
+  "location": "İzmir",
+  "results_count": 12,
+  "last_searched_at": "2026-03-15T10:30:00Z"
+}
+```
+
+---
+
 ### Ambiguous Districts Reference
 
 Turkish cities have districts with identical or similar names. Keep this reference handy:
@@ -661,6 +703,42 @@ Nedenler:
 
 ---
 
+## STEP 9.5: Log Search to `searches` Table
+
+**Model:** None (direct SQL)
+**Tools:** Supabase (execute_sql or apply_migration)
+**Task:** Record this search in the `searches` table for future dedup.
+
+**SQL (INSERT OR UPDATE):**
+```sql
+INSERT INTO searches (keyword, location, count, results_count, last_searched_at)
+VALUES (?, ?, ?, ?, NOW())
+ON CONFLICT(keyword, location) DO UPDATE SET
+  count = EXCLUDED.count,
+  results_count = EXCLUDED.results_count,
+  last_searched_at = NOW();
+```
+
+**Where:**
+- `keyword` — from STEP 0.5 parsed input (e.g., "demir çelik ticareti")
+- `location` — from STEP 0.5 parsed input (e.g., "İzmir")
+- `count` — how many prospects were requested (e.g., 5)
+- `results_count` — how many actual results Outscraper returned (e.g., 12)
+
+**Why UPSERT?** If the same search is run again, we update the record with the new result count and timestamp. This lets users see "searched last on 2026-03-17" and "found 12 companies".
+
+**Example after run:**
+```
+searches table:
+| keyword | location | count | results_count | last_searched_at |
+|---------|----------|-------|---------------|------------------|
+| demir çelik ticareti | İzmir | 5 | 12 | 2026-03-17 10:45:00 |
+```
+
+**Timing:** Execute STEP 9.5 **after STEP 9** (Telegram notification), so the entire workflow is logged.
+
+---
+
 ## RATE LIMITING & COST
 
 **Outscraper:** 50 records max per run (~$0.15 cost)
@@ -684,22 +762,26 @@ Bypasses permission dialogs for this session and all subagents. Needed for Orche
 
 ---
 
-## Full 9-Step Execution Flow
+## Full 11-Step Execution Flow
 
 **When invoked, this skill executes ALL steps automatically:**
 
 1. **STEP 0.5** — Parse natural language input (Turkish or English) → JSON schema
-2. **STEP 1** — Run Outscraper discovery (async job + polling)
-3. **STEP 2** — Pre-filter by Maps metadata
-4. **STEP 3** — Dedup against Supabase
-5. **STEP 4** — Website scraping + email extraction (parallel)
-6. **STEP 5** — ICP scoring (Sonnet per company)
-7. **STEP 6** — AI opportunities analysis
-8. **STEP 7** — Email draft (Turkish or English, matching input language)
-9. **STEP 8** — **Insert all companies into Supabase** (cold_ready OR discarded)
-10. **STEP 9** — **Send Telegram notification** with results
+2. **STEP 0.9** — Check if (keyword + location) already searched → ask user if repeat is OK
+3. **STEP 1** — Run Outscraper discovery (async job + polling)
+4. **STEP 2** — Pre-filter by Maps metadata
+5. **STEP 3** — Dedup against Supabase
+6. **STEP 4** — Website scraping + email extraction (parallel)
+7. **STEP 5** — ICP scoring (Sonnet per company)
+8. **STEP 6** — AI opportunities analysis
+9. **STEP 7** — Email draft (Turkish or English, matching input language)
+10. **STEP 8** — **Insert all companies into Supabase** (cold_ready OR discarded)
+11. **STEP 9** — **Send Telegram notification** with results
+12. **STEP 9.5** — **Log search to `searches` table** (upsert keyword + location + result count)
 
-**IMPORTANT:** Steps 8–9 execute automatically. No manual intervention needed after invocation.
+**IMPORTANT:** Steps 8–9.5 execute automatically. No manual intervention needed after invocation.
+
+**Cost optimization:** STEP 0.9 prevents re-searching, saving ~$0.15 per duplicate search.
 
 ---
 
