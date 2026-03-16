@@ -117,35 +117,60 @@ description: >
 **Tools:** Supabase execute_sql
 **Cost:** Free (1 query)
 
-**Task:** Check if this `keyword` + `location` combination has already been searched.
+**Task:** Check if this `keyword` + `location` combination has already been searched. **Normalize both before lookup to catch spelling/Turkish-character variants.**
 
-**SQL:**
+### Normalization (before DB lookup):
+
+**Keyword normalization:**
+1. Lowercase: `"Demir Çelik Ticareti"` → `"demir çelik ticareti"`
+2. Turkish → ASCII: `ç→c`, `ş→s`, `ı→i`, `ğ→g`, `ü→u`, `ö→o`
+   - `"demir çelik ticareti"` → `"demir celik ticareti"`
+3. Strip common suffixes: `" ticareti"`, `" satıcısı"`, `" dağıtıcısı"`
+   - `"demir celik ticareti"` → `"demir celik"`
+
+**Location normalization:**
+1. Lowercase + Turkish→ASCII: `"İzmir"` → `"izmir"`, `"Bornova"` → `"bornova"`
+2. Strip city suffix: `", İzmir"` → empty, `", İstanbul"` → empty
+   - `"Kemalpasa, İzmir"` → `"kemalpasa"`
+   - `"İzmir"` → `"izmir"`
+3. Normalize district to parent if ambiguous:
+   - `"Göztepe, İstanbul"` → `"istanbul"`
+   - (User should clarify ambiguous districts in STEP 0.5)
+
+**Store normalized values:** Add `keyword_normalized` and `location_normalized` columns to `searches` table (or override existing columns with normalized values).
+
+### SQL Query:
+
 ```sql
 SELECT results_count, last_searched_at FROM searches
-WHERE keyword = ? AND location = ?;
+WHERE keyword_normalized = ? AND location_normalized = ?;
 ```
 
 **Logic:**
-1. After parsing input in STEP 0.5, immediately check `searches` table
-2. If found:
-   - Log: `"⏭️ Bu arama daha yapılmış: keyword='{keyword}', location='{location}' ({results_count} sonuç, son arama: {last_searched_at})"`
-   - Ask user: `"Yine de devam etmek ister misin? (Outscraper API maliyeti doğacak)"`
+1. After parsing input in STEP 0.5, normalize keyword + location
+2. Immediately check `searches` table using normalized values
+3. If found:
+   - Log: `"⏭️ Bu arama daha yapılmış: '{keyword}' + '{location}' ({results_count} sonuç, son arama: {last_searched_at})"`
+   - Pre-warning: `"Bu aramadan N şirket DB'nize zaten eklendi. Outscraper maliyeti ~$0.X doğacak ve yeni sonuç gelme ihtimali düşük. [date]'den bu yana yeni listelemeler olmuş olabilir."`
+   - Ask user: `"Yine de devam etmek ister misin?"`
    - If yes → continue to STEP 1
    - If no → abort gracefully
-3. If not found:
+4. If not found:
    - Continue to STEP 1 normally
 
 **Why this matters:**
 - Outscraper costs ~$0.003/record. Re-searching the same area wastes money.
-- If you found "demir çelik ticareti İzmir" last week with 10 results, this week's version will have the same companies (mostly).
-- Dedup at company level (STEP 3) filters URLs, but STEP 0.9 prevents the entire search.
+- If you found "demir çelik ticareti İzmir" last week with 10 results, a search for "demir celik ticareti Izmir" (Turkish chars stripped) should be recognized as the same.
+- Normalization prevents duplicate Outscraper calls due to typos or Turkish character variants.
 
 **Output:**
 ```json
 {
   "search_exists": true,
   "keyword": "demir çelik ticareti",
+  "keyword_normalized": "demir celik",
   "location": "İzmir",
+  "location_normalized": "izmir",
   "results_count": 12,
   "last_searched_at": "2026-03-15T10:30:00Z"
 }
@@ -246,17 +271,24 @@ done
 
 ---
 
-## STEP 1.5: Already-Seen Pre-check (Cross-Query Deduplication)
+## ⛔ STEP 1.5: Already-Seen Pre-check (Cross-Query Deduplication)
 
-**Model:** None (direct SQL)
-**Tools:** Supabase execute_sql
+**MANDATORY: Run as Direct Supabase MCP Call. NEVER delegate to subagent.**
+
+**Model (Pass 1):** None — direct SQL
+**Model (Pass 2):** Haiku — fuzzy name check for near-duplicates
+**Tools:** Supabase execute_sql (Pass 1), Haiku subagent (Pass 2)
 **Cost:** Free (1-2 queries)
 
 **Purpose:** Prevent companies that already exist in the DB (from ANY previous search) from being re-processed. This catches the case where CDC DEMİR ÇELİK was found in a "demir çelik ticareti" search and re-appears in a different keyword search like "çelik satıcı" in the same city.
 
-**Task:** Before STEP 2 filtering, remove already-known companies from the Outscraper results.
+**Task:** Before STEP 2 filtering, remove already-known companies from the Outscraper results using two passes:
+- **Pass 1:** Direct SQL exact-match dedup (URL + normalized name)
+- **Pass 2:** Haiku fuzzy name check for edge cases (abbreviations, misspellings, variant names)
 
-### Name and URL Normalization
+### Pass 1 — Exact SQL Dedup (Direct Supabase MCP Call)
+
+**Name and URL Normalization:**
 
 **Name normalization:**
 1. Lowercase: `"CDC DEMİR ÇELİK"` → `"cdc demir çelik"`
@@ -268,13 +300,7 @@ done
 2. Strip `www.`: `www.mefamed.com.tr` → `mefamed.com.tr`
 3. Strip trailing slash: `mefamed.com.tr/` → `mefamed.com.tr`
 
-### Pre-check Query
-
-**For each company from Outscraper:**
-
-1. Build list of all normalized company names
-2. Build list of all normalized URLs
-3. Query DB:
+**SQL Query (direct Supabase MCP call):**
 
 ```sql
 SELECT id, name, url FROM prospects
@@ -283,27 +309,93 @@ WHERE LOWER(REGEXP_REPLACE(REGEXP_REPLACE(name, '\s+(Ltd\.|Şti\.|A\.Ş\.|LTD\.�
    OR (url IS NOT NULL AND url IN (list_of_normalized_urls));
 ```
 
-4. For each match: mark company as "already_known" → **remove from processing queue entirely**
-5. Log: `"N already-known companies removed from batch"`
+**Logic:**
+1. Build list of incoming company names + URLs from Outscraper STEP 1 results
+2. Normalize each name (lowercase + strip suffixes + whitespace)
+3. Normalize each URL (strip protocol + www + trailing slash)
+4. Execute SQL query above (direct Supabase MCP call — no delegation)
+5. Mark matched companies as "already_known" → **remove from processing queue entirely**
+6. Log: `"N already-known companies removed by exact SQL match"`
 
-### Why This Step?
-
-**STEP 0.9** prevents re-calling Outscraper for the **exact same keyword+location** (cost guard).
-
-**STEP 1.5** handles cross-query overlap: when you search "demir çelik ticareti İzmir" one day and "çelik satıcı İzmir" the next, Outscraper returns overlapping company names. Without STEP 1.5, CDC appears again. With STEP 1.5, it's silently filtered out before STEP 2.
-
-### Output
-
+**Output from Pass 1:**
 ```json
 {
   "batch_in": 12,
-  "already_known_removed": 2,
-  "batch_out": 10,
+  "exact_match_removed": 2,
+  "batch_after_pass1": 10,
   "removed_names": ["CDC DEMİR ÇELİK", "Acme Çelik Ltd."]
 }
 ```
 
-**Continue to STEP 2 with remaining companies only.**
+### Pass 2 — Haiku Fuzzy Name Check (for edge cases)
+
+**When to use:** After Pass 1 SQL exact dedup, if remaining companies > 0.
+
+**Task:** Haiku subagent: Given incoming company names (from Outscraper) and existing company names from same city (from DB), identify probable duplicates that SQL missed.
+
+**Haiku prompt:**
+```
+You are a company name deduplication specialist for Turkish SMBs.
+
+Incoming companies (from Outscraper):
+[list of names]
+
+Existing companies in same city (from DB):
+[list of names from prospects table WHERE city = ?]
+
+Task: For each incoming company, does it match ANY existing company name?
+Consider:
+- Abbreviations: "Acme Ltd" vs "ACME"
+- Misspellings: "Kanatt" vs "Kanaat"
+- Variant capitalization of Turkish chars
+- Short forms: "A-B Ticaret" vs "A-B T."
+- Owner name additions: "Mefamed Ltd" vs "Mehmet's Mefamed"
+
+Return ONLY name pairs that are likely the same company, one per line:
+  "Kanaat Demir" = "Kanatt Demir İzmir Şubesi"
+  "Acme Celik Ltd." = "ACME CELİK"
+
+If no matches found, respond: "No matches"
+```
+
+**Logic:**
+1. Fetch all company names from DB for the input `location` (city)
+2. For each remaining company from Pass 1, pass to Haiku (bulk, not per-company)
+3. Parse Haiku response: name pairs that match
+4. Remove matched companies from processing queue
+5. Log: `"K additional companies removed by fuzzy match"`
+
+**Output from Pass 2:**
+```json
+{
+  "batch_before_pass2": 10,
+  "fuzzy_match_removed": 1,
+  "batch_after_pass2": 9,
+  "removed_by_fuzzy": ["Kanaat Demir İzmir Merkez"]
+}
+```
+
+### Why This Two-Pass Approach?
+
+**STEP 0.9** prevents re-calling Outscraper for the **exact same keyword+location** (cost guard).
+
+**STEP 1.5 Pass 1** handles cross-query overlap via exact SQL match: when you search "demir çelik ticareti İzmir" one day and "çelik satıcı İzmir" the next, Outscraper returns overlapping company names. CDC with exact match filters out immediately.
+
+**STEP 1.5 Pass 2** catches edge cases SQL misses: abbreviations, misspellings, variant names. This is a second safety net using Haiku's semantic understanding of company name variations.
+
+### Final Output (combined)
+
+```json
+{
+  "batch_in": 12,
+  "exact_match_removed": 2,
+  "fuzzy_match_removed": 1,
+  "batch_final": 9,
+  "removed_names": ["CDC DEMİR ÇELİK", "Acme Çelik Ltd.", "Kanaat Demir İzmir Merkez"]
+}
+```
+
+**Continue to STEP 2 with remaining 9 companies only.**
 
 ---
 
@@ -391,12 +483,13 @@ ON CONFLICT(LOWER(REGEXP_REPLACE(REGEXP_REPLACE(name, '\s+(Ltd\.|Şti\.|A\.Ş\.|
 
 ---
 
-## STEP 3: Deduplication — Check Supabase DB (URL + Name)
+## ⛔ STEP 3: Deduplication — Check Supabase DB (URL + Name) — Safety Net
 
 **Model:** None (direct SQL)
 **Tools:** Supabase execute_sql
+**Note:** This is a safety net for edge cases. STEP 1.5 (two-pass dedup) should catch most duplicates before STEP 3.
 
-**Task:** Query `prospects` table for URLs AND names that already exist (any status, including `'discarded'` and `'pre_filter_discard'`).
+**Task:** Query `prospects` table for URLs AND names that already exist (any status, including `'discarded'` and `'pre_filter_discard'`). Final check before STEP 4 research.
 
 **URL normalization:**
 1. Strip protocol: `https://mefamed.com.tr` → `mefamed.com.tr`
@@ -873,23 +966,29 @@ Bypasses permission dialogs for this session and all subagents. Needed for Orche
 
 **When invoked, this skill executes ALL steps automatically:**
 
-1. **STEP 0.5** — Parse natural language input (Turkish or English) → JSON schema
-2. **STEP 0.9** — Check if (keyword + location) already searched → ask user if repeat is OK
-3. **STEP 1** — Run Outscraper discovery with buffer (async job + polling)
-4. **STEP 1.5** — Cross-query dedup: remove already-seen companies (name + URL match)
-5. **STEP 2** — Pre-filter by Maps metadata (intent matching + hard filters)
-6. **STEP 3** — Dedup against Supabase (URL + name for Stage 1 survivors only)
-7. **STEP 4** — Website scraping + email extraction (parallel)
+1. **STEP 0.5** — Parse natural language input (Turkish or English) → JSON schema (Sonnet)
+2. **⛔ STEP 0.9** — Check if (keyword + location) already searched, **with normalization** → ask user if repeat is OK (DIRECT SQL — no delegation)
+3. **STEP 1** — Run Outscraper discovery with buffer (async job + polling) (Haiku)
+4. **⛔ STEP 1.5** — Cross-query dedup: **Two-pass** — Pass 1: exact SQL match, Pass 2: Haiku fuzzy check (DIRECT SQL Pass 1, Haiku Pass 2 — no full delegation)
+5. **STEP 2** — Pre-filter by Maps metadata (intent matching + hard filters) (Haiku)
+6. **⛔ STEP 3** — Dedup against Supabase (URL + name) — safety net (DIRECT SQL — no delegation)
+7. **STEP 4** — Website scraping + email extraction (parallel) (Haiku per company)
 8. **STEP 5** — ICP scoring (Sonnet per company)
-9. **STEP 6** — AI opportunities analysis
-10. **STEP 7** — Email draft (Turkish or English, matching input language)
-11. **STEP 8** — **Insert all companies into Supabase** (cold_ready OR discarded)
-12. **STEP 9** — **Send Telegram notification** with results
-13. **STEP 9.5** — **Log search to `searches` table** (upsert keyword + location + result count)
+9. **STEP 6** — AI opportunities analysis (Sonnet per company)
+10. **STEP 7** — Email draft (Turkish or English, matching input language) (Sonnet per company)
+11. **STEP 8** — **Insert all companies into Supabase** (cold_ready OR discarded) (DIRECT SQL — no delegation)
+12. **STEP 9** — **Send Telegram notification** with results (Bash curl — no delegation)
+13. **STEP 9.5** — **Log search to `searches` table** (upsert keyword + location + result count) (DIRECT SQL — no delegation)
+
+**CRITICAL RULES:**
+- **Steps marked ⛔ must use DIRECT Supabase MCP calls, NEVER delegate to subagent**
+- **STEP 0.9:** Normalize keyword + location BEFORE querying `searches` table
+- **STEP 1.5:** Two-pass approach — Pass 1 is mandatory direct SQL, Pass 2 (Haiku) for fuzzy edge cases
+- **STEP 3:** Safety net — catches edge cases STEP 1.5 may have missed
 
 **IMPORTANT:** Steps 8–9.5 execute automatically. No manual intervention needed after invocation.
 
-**Cost optimization:** STEP 0.9 prevents re-searching, saving ~$0.15 per duplicate search.
+**Cost optimization:** STEP 0.9 (with normalization) prevents re-searching variants, saving ~$0.15 per duplicate search. STEP 1.5 two-pass dedup reduces unnecessary website scraping downstream.
 
 ---
 
