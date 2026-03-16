@@ -296,33 +296,74 @@ This stage typically eliminates 40-60% of records without any website scraping.
 }
 ```
 
+**Insert discards into Supabase (STEP 2 tail):**
+
+After filtering, insert ALL discarded companies into `prospects` with `status: 'pre_filter_discard'`.
+This prevents them from ever being re-evaluated.
+
+For each entry in `discarded_stage1`:
+- name: company name from Outscraper
+- phone: from Outscraper (if available)
+- address: from Outscraper (if available)
+- city: from input `location`
+- url: NULL
+- industry: Maps category (e.g. "İnşaat Malzemesi Toptancısı")
+- score: 0
+- status: 'pre_filter_discard'
+- ai_opportunities: [{"reason": "<discard reason>"}]
+- email_draft: NULL
+- search_keyword: from input `keyword + location`
+
+SQL:
+```sql
+INSERT INTO prospects (name, phone, address, city, url, industry, score, status,
+  ai_opportunities, email_draft, search_keyword, created_at)
+VALUES (?, ?, ?, ?, NULL, ?, 0, 'pre_filter_discard',
+  '["reason": "?"]'::jsonb, NULL, ?, NOW())
+ON CONFLICT DO NOTHING;
+```
+
 ---
 
-## STEP 3: Deduplication — Check Supabase DB
+## STEP 3: Deduplication — Check Supabase DB (URL + Name)
 
 **Model:** None (direct SQL)
 **Tools:** Supabase execute_sql
 
-**Task:** Query `prospects` table for URLs that already exist (any status, including `'discarded'`).
+**Task:** Query `prospects` table for URLs AND names that already exist (any status, including `'discarded'` and `'pre_filter_discard'`).
 
 **URL normalization:**
 1. Strip protocol: `https://mefamed.com.tr` → `mefamed.com.tr`
 2. Strip `www.`: `www.mefamed.com.tr` → `mefamed.com.tr`
 3. Strip trailing slash: `mefamed.com.tr/` → `mefamed.com.tr`
 
+**Name normalization:**
+1. Lowercase
+2. Strip common suffixes: `Ltd.`, `Şti.`, `A.Ş.`, `LTD.ŞTİ.`, `SAN VE TİC`, `ŞUBE`
+3. Strip extra whitespace
+
+Example: `"CDC DEMİR ÇELİK"` → `"cdc demir çelik"`
+
 **SQL:**
 ```sql
+-- Check existing URLs
 SELECT DISTINCT url FROM prospects
 WHERE url IN (list_of_normalized_urls);
+
+-- Check existing names
+SELECT DISTINCT name FROM prospects
+WHERE LOWER(REGEXP_REPLACE(REGEXP_REPLACE(name, '\s+(Ltd\.|Şti\.|A\.Ş\.|LTD\.ŞTİ\.|SAN VE TİC|ŞUBE)$', '', 'i'), '\s+', ' ', 'g'))
+  IN (list_of_normalized_names);
 ```
 
 **Logic:**
-- For each Stage 1 survivor, normalize the URL
-- Check if already in DB
+- For each Stage 1 survivor, normalize BOTH the URL and the name
+- Check if either the URL OR the normalized name already exists in DB
 - If yes: skip (mark as "duplicate")
 - If no: add to research queue
+- This catches companies without websites by matching their name, preventing CDC DEMİR ÇELİK from re-appearing
 
-**Keep top `count` new URLs** after dedup.
+**Keep top `count` new companies** after dedup.
 
 **Output:**
 ```json
