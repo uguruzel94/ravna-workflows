@@ -65,6 +65,35 @@ description: >
 
 ---
 
+## STEP 0.5: Natural Language Parser (Turkish + English)
+
+**Model:** Sonnet (1 call, upfront)
+**Input:** User query in Turkish or English (natural language)
+**Output:** JSON schema matching INPUT SCHEMA above
+
+**Task:** Convert user input to structured schema:
+
+### Turkish examples:
+- `"bana İzmir'de demir çelik ticareti yapan 5 şirket bulabilir misin?"` → `{keyword: "demir çelik ticareti", city: "İzmir", count: 5}`
+- `"İstanbul'da muhasebe firması ara, 10 tane"` → `{keyword: "muhasebe firması", city: "İstanbul", count: 10}`
+- `"Ankara'da yazılım şirketi, ama küçük, 7 tane"` → `{keyword: "yazılım şirketi", city: "Ankara", count: 7, intent: "küçük şirket, yazılım"}`
+
+### English examples:
+- `"Find me 5 steel trading companies in Izmir"` → `{keyword: "steel trading", city: "İzmir", count: 5}`
+- `"Search for accounting firms in Istanbul, 10 results"` → `{keyword: "accounting firm", city: "İstanbul", count: 10}`
+
+**Parser logic:**
+1. Detect language (Turkish or English)
+2. Extract: `keyword` (what sector/service), `city` (Turkish city), `count` (number, default 10)
+3. Infer `intent` if user provides exclusions (e.g., "ama değil", "except", "no")
+4. If city is English name (e.g., "Izmir"), convert to Turkish (İzmir)
+5. Output JSON matching INPUT SCHEMA
+6. Set response language = detected language
+
+**Continue all subsequent steps (1-9) in the detected language.**
+
+---
+
 ## STEP 1: Discovery — Outscraper Maps Search (Async + Polling)
 
 **Model:** Haiku (1 subagent)
@@ -626,6 +655,25 @@ Bypasses permission dialogs for this session and all subagents. Needed for Orche
 
 ---
 
+## Full 9-Step Execution Flow
+
+**When invoked, this skill executes ALL steps automatically:**
+
+1. **STEP 0.5** — Parse natural language input (Turkish or English) → JSON schema
+2. **STEP 1** — Run Outscraper discovery (async job + polling)
+3. **STEP 2** — Pre-filter by Maps metadata
+4. **STEP 3** — Dedup against Supabase
+5. **STEP 4** — Website scraping + email extraction (parallel)
+6. **STEP 5** — ICP scoring (Sonnet per company)
+7. **STEP 6** — AI opportunities analysis
+8. **STEP 7** — Email draft (Turkish or English, matching input language)
+9. **STEP 8** — **Insert all companies into Supabase** (cold_ready OR discarded)
+10. **STEP 9** — **Send Telegram notification** with results
+
+**IMPORTANT:** Steps 8–9 execute automatically. No manual intervention needed after invocation.
+
+---
+
 ## Checklist Before Running
 
 - [ ] `.env.local` has `OUTSCRAPER_API_KEY` filled
@@ -633,7 +681,9 @@ Bypasses permission dialogs for this session and all subagents. Needed for Orche
 - [ ] Supabase schema applied (phone, address, email columns added)
 - [ ] `.claude/settings.json` updated with Playwright + Bash(*) + Supabase MCP
 - [ ] Test with real data: `keyword: "tıbbi cihaz distributor", city: "İstanbul", count: 3`
-- [ ] Verify email_draft is well-formed Turkish (no clichés, formal "Siz")
+- [ ] Verify email_draft is well-formed (no clichés, formal "Siz")
 - [ ] Verify contact data (phone, address, email) populated in DB inserts
 - [ ] Verify Telegram notification arrives with proper formatting
+- [ ] Test natural language parser with Turkish: `"bana İzmir'de demir çelik ticareti yapan 5 şirket bulabilir misin?"`
+- [ ] Test natural language parser with English: `"Find me 5 steel trading companies in Izmir"`
 
