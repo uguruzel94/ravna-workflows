@@ -176,7 +176,7 @@ WHERE keyword_normalized = 'demir celik ticareti'
 1. After parsing input in STEP 0.5, compute normalized values using the functions above
 2. Immediately check `searches` table using normalized values as SQL string literals
 3. If found:
-   - Log: `"⏭️ Bu arama daha yapılmış: '{keyword}' + '{location}' ({results_count} sonuç, son arama: {last_searched_at})"`
+   - Log: `"⏭️ Bu arama daha önce yapılmış: '{keyword}' + '{location}' ({results_count} sonuç, son arama: {last_searched_at})"`
    - Pre-warning: `"Bu aramadan N şirket DB'nize zaten eklendi. Outscraper maliyeti ~$0.X doğacak ve yeni sonuç gelme ihtimali düşük. [date]'den bu yana yeni listelemeler olmuş olabilir."`
    - Ask user: `"Yine de devam etmek ister misin?"`
    - If yes → continue to STEP 1
@@ -330,14 +330,25 @@ done
 
 ```sql
 SELECT id, name, url FROM prospects
-WHERE LOWER(REGEXP_REPLACE(REGEXP_REPLACE(name, '\s+(Ltd\.|Şti\.|A\.Ş\.|LTD\.ŞTİ\.|SAN VE TİC|ŞUBE)$', '', 'i'), '\s+', ' ', 'g'))
+WHERE LOWER(translate(
+  REGEXP_REPLACE(REGEXP_REPLACE(name, '\s+(Paz\.|İnş\.|San\.|Tic\.|Ltd\.|Şti\.|A\.Ş\.|LTD\.ŞTİ\.|SAN VE TİC|ŞUBE)(\s+.*)?$', '', 'i'), '\s+', ' ', 'g'),
+  'çşığüöÇŞİĞÜÖ',
+  'csiguoCsIGUO'
+))
       IN (list_of_normalized_names)
    OR (url IS NOT NULL AND url IN (list_of_normalized_urls));
 ```
 
+**CRITICAL — Turkish character normalization:**
+
+The IN list must be pre-normalized to ASCII using the same `translate()` mapping that the SQL applies:
+- Build the IN list: for each incoming name, apply `lower(translate(name, 'çşığüöÇŞİĞÜÖ', 'csiguoCsIGUO'))` BEFORE adding to the SQL string
+- Example: `"CDC DEMİR ÇELİK"` → `"cdc demir celik"` (normalized), then add to the IN list as a string literal
+- Both sides of the SQL comparison now use identical normalization, fixing the Turkish character mismatch that broke dedup for companies without URLs
+
 **Logic:**
 1. Build list of incoming company names + URLs from Outscraper STEP 1 results
-2. Normalize each name (lowercase + strip suffixes + whitespace)
+2. Normalize each name: `lower(translate(name, 'çşığüöÇŞİĞÜÖ', 'csiguoCsIGUO'))` BEFORE adding to the SQL IN list
 3. Normalize each URL (strip protocol + www + trailing slash)
 4. Execute SQL query above (direct Supabase MCP call — no delegation)
 5. Mark matched companies as "already_known" → **remove from processing queue entirely**
@@ -537,7 +548,11 @@ WHERE url IN (list_of_normalized_urls);
 
 -- Check existing names
 SELECT DISTINCT name FROM prospects
-WHERE LOWER(REGEXP_REPLACE(REGEXP_REPLACE(name, '\s+(Ltd\.|Şti\.|A\.Ş\.|LTD\.ŞTİ\.|SAN VE TİC|ŞUBE)$', '', 'i'), '\s+', ' ', 'g'))
+WHERE LOWER(translate(
+  REGEXP_REPLACE(REGEXP_REPLACE(name, '\s+(Paz\.|İnş\.|San\.|Tic\.|Ltd\.|Şti\.|A\.Ş\.|LTD\.ŞTİ\.|SAN VE TİC|ŞUBE)(\s+.*)?$', '', 'i'), '\s+', ' ', 'g'),
+  'çşığüöÇŞİĞÜÖ',
+  'csiguoCsIGUO'
+))
   IN (list_of_normalized_names);
 ```
 
