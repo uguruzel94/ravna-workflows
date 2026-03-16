@@ -65,55 +65,78 @@ description: >
 
 ---
 
-## STEP 1: Discovery — Outscraper Maps Search
+## STEP 1: Discovery — Outscraper Maps Search (Async + Polling)
 
 **Model:** Haiku (1 subagent)
 **Tools:** Bash (curl to Outscraper API)
 **Cost:** ~$0.15 per run max (50 records × $0.003)
 
-**Task:**
+**Task:** Submit async job, poll for completion.
+
 ```bash
-curl -s --max-time 90 "https://api.app.outscraper.com/maps/search" \
-  -G \
-  --data-urlencode "query={keyword} {city}" \
-  --data-urlencode "limit=min(count * 3, 50)" \
-  --data-urlencode "language=tr" \
-  --data-urlencode "async=false" \
-  -H "X-API-KEY: ${OUTSCRAPER_API_KEY}"
+# IMPORTANT: Always separate 'source' from curl on different lines
+source /Users/uguruzel/Vibe/ravna-workflows/.env.local
+JOB=$(curl -s -X POST "https://api.app.outscraper.com/google-maps-search" \
+  -H "X-API-KEY: ${OUTSCRAPER_API_KEY}" \
+  -H "Content-Type: application/json" \
+  -H "client: Python SDK" \
+  -d "{\"query\": [\"tıbbi cihaz distributor İstanbul\"], \"organizationsPerQueryLimit\": 3, \"language\": \"tr\"}")
+
+JOB_ID=$(echo "$JOB" | jq -r '.id')
+
+# Poll every 5s, up to 60 minutes (SDK default)
+for i in {1..720}; do
+  sleep 5
+  RESULT=$(curl -s "https://api.outscraper.cloud/requests/$JOB_ID" \
+    -H "X-API-KEY: ${OUTSCRAPER_API_KEY}")
+  STATUS=$(echo "$RESULT" | jq -r '.status')
+  if [ "$STATUS" != "Pending" ]; then
+    echo "$RESULT" | jq '.data'
+    break
+  fi
+done
 ```
 
-**Cost guard:** `limit = min(count * 3, 50)` — absolute ceiling of 50 records per run.
+**Critical fixes:**
+- Use `POST /google-maps-search` (not `GET /maps/search`)
+- Field is `organizationsPerQueryLimit` (not `limit`)
+- Add header `client: Python SDK` (required by Outscraper SDK)
+- Always separate `source .env.local` from curl on different lines
+- Specify query as JSON array: `\"query\": [\"search term\"]`
 
-**Per-company data returned:**
-- `business_name` — official company name
+**Cost guard:** Request returns N results directly per the `organizationsPerQueryLimit` parameter.
+
+**Why async?** The Outscraper API processes maps/search asynchronously by design. Job ID is returned immediately, results polled after processing.
+
+**Per-company data returned (from `.data[0]` array):**
+- `title` — official company name
 - `phone` — phone number (if listed)
 - `website` — company website URL
 - `address` — full address
 - `type` — Google Maps category (e.g., "Tıbbi cihaz dağıtıcısı", "Diş hekimi", "Eczane")
 - `review_count` — number of Google reviews
 - `rating` — Google rating (1-5 stars)
-- `coordinates` — lat/lng
 
-**Output format:**
+**Output format (from polling result):**
 ```json
-{
-  "discovered_companies": [
+[
+  [
     {
-      "business_name": "Mefamed Ltd.",
+      "title": "Mefamed Ltd.",
       "phone": "+90 (212) 123-4567",
       "website": "mefamed.com.tr",
       "address": "Levent, İstanbul",
       "type": "Tıbbi cihaz dağıtıcısı",
       "review_count": 45,
       "rating": 4.8
-    }
-  ],
-  "total_found": 15,
-  "api_status": "success" | "degraded"
-}
+    },
+    { ... }
+  ]
+]
 ```
 
 **Error handling:**
+- If job doesn't complete within 120s: log warning, return partial/empty results
 - If API key missing: log warning, fall back to Brave searches (log: "degraded mode")
 - If API returns error: fall back to Brave searches
 - If no results found: return empty array, continue (don't fail)
