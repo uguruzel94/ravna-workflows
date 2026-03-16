@@ -1,6 +1,6 @@
 # STATE.md — ravna-workflows
 **Rewrite this file at the end of every session. Do not append — replace.**
-**Last updated:** 2026-03-16 (session 4)
+**Last updated:** 2026-03-16 (session 5-6, final)
 
 ---
 
