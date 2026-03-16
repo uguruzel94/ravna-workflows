@@ -1,14 +1,14 @@
 # STATE.md — ravna-workflows
 **Rewrite this file at the end of every session. Do not append — replace.**
-**Last updated:** 2026-03-17 (session 9)
+**Last updated:** 2026-03-17 (session 10)
 
 ---
 
 ## CURRENT STATUS
 
-**Phase:** Prospect Research Core Dedup Stress Test & Fixes (v3.3)
-**Active skill:** prospect-research v3.3 — full cross-query dedup implemented
-**Overall system:** prospect-research ready for real-world testing; company-lookup + 6 other skills pending
+**Phase:** Prospect Research Four-Bug Dedup Fix (v3.4) — STEP 0.9 + 1.5 + 3
+**Active skill:** prospect-research v3.4 — normalization + two-pass dedup (STEP 1.5 refactored)
+**Overall system:** prospect-research architecture now hardened; company-lookup + 6 other skills pending
 
 ---
 
@@ -44,11 +44,17 @@
   - ✅ STEP 2 tail: Fixed JSON syntax + conflict handling
   - ✅ STEP 3: Clarified scope (Stage 1 survivors only; cross-query handled by STEP 1.5)
   - ✅ Execution flow: Updated to 12 steps (added STEP 1.5)
+- [x] `prospect-research/SKILL.md` v3.4 — four-bug dedup fix (session 10)
+  - ✅ Fix 1: STEP 0.9 normalization (Turkish→ASCII, strip suffixes before searches table lookup)
+  - ✅ Fix 2: STEP 1.5 mandatory DB Gate (⛔ marker, direct Supabase MCP, two-pass: exact SQL + Haiku fuzzy)
+  - ✅ Fix 3: STEP 3 safety net (⛔ marker, clarified as final check before STEP 4)
+  - ✅ Fix 4: Pre-Outscraper warning (re-run cost + low likelihood message)
+  - ✅ Execution flow: Updated with ⛔ markers for direct SQL steps (0.9, 1.5, 3, 8, 9, 9.5)
 - [x] `prospect-research/evals.json` — created with 3 test cases
 - [x] `company-lookup/SKILL.md` v1 — written (natural language parser + Supabase query builder)
 - [x] `company-lookup/SKILL.md` v1.1 — optimized (switched parser from Sonnet → Haiku for cost/speed)
-- [ ] `prospect-research/SKILL.md` v3.3 — tested with real data (Outscraper API key needed)
-- [ ] `prospect-research/SKILL.md` v3.3 — email tone verified
+- [ ] `prospect-research/SKILL.md` v3.4 — tested with real data (Outscraper API key needed)
+- [ ] `prospect-research/SKILL.md` v3.4 — email tone verified
 - [ ] `company-lookup/SKILL.md` v1.1 — tested with real data (Supabase queries)
 - [ ] `orchestrator/SKILL.md` — sketched (design in ORCHESTRATOR-SKETCH.md), P3
 - [ ] `followup-crm/SKILL.md` — written (P2)
@@ -62,60 +68,49 @@
 
 ## LAST SESSION
 
-**Date:** 2026-03-17 (session 8)
+**Date:** 2026-03-17 (session 10)
 
-**Task: Prospect Research — Full Dedup Stress Test & Fixes (v3.3)**
+**Task: Prospect Research — Four-Bug Dedup Fix (v3.4 — STEP 0.9 + 1.5 + 3 hardening)**
 
-**Problem identified in stress test:** CDC DEMİR ÇELİK would still appear on second run because:
-1. Previous fix (v3.2) stored discards but only checked discards at STEP 2 (too late)
-2. Name dedup at STEP 3 only checked Stage 1 survivors (companies WITH websites)
-3. No-website companies discarded at STEP 2 never reached STEP 3 dedup check
-4. When re-searched with different keyword, CDC appeared again in Outscraper results → processed anew
+**Problems discovered (from v3.3):** During Kemalpasa demir çelik ticareti search, KANAAT DEMİR and MERT ÇELİK were already in DB from 2026-03-16, but:
+1. STEP 1.5 and STEP 3 were silently skipped (bundled into Haiku subagent, which did memory intent-matching but never executed SQL)
+2. STEP 0.9 exact-match lookup didn't normalize, so "demir çelik" vs "demir celik" or "Kemalpasa, İzmir" vs "Kemalpasa" were treated as different searches
+3. Haiku fuzzy name check didn't exist for STEP 1.5 edge cases (abbreviations, misspellings, variant names)
+4. Re-running a confirmed search warned user but didn't mention that all companies were likely already in DB (wasting Outscraper cost)
 
-**Root cause:** Dedup was wired to the wrong step. Needed to move from STEP 3 (too late) to between STEP 1 and STEP 2 (right time).
+**Root causes identified (the four bugs):**
+1. **Bug 1 (main):** STEP 1.5 never ran SQL — text was ambiguous enough to allow delegation to subagent
+2. **Bug 2:** STEP 0.9 didn't normalize keyword+location before lookup
+3. **Bug 3:** Company name matching was brittle (SQL regex didn't handle all Turkish variants)
+4. **Bug 4:** Re-run confirmation didn't warn about cost or low likelihood of new results
 
-**Solutions implemented:**
+**Solutions implemented (v3.4):**
 
-**Tier 1 — Schema fixes:**
-- ✅ Added `'pre_filter_discard'` to `prospect_status` ENUM
-- ✅ Created `searches` table (for STEP 0.9 + STEP 9.5 cost guard + search history)
-- ✅ Confirmed `phone`, `address`, `email` columns exist in prospects table
+**Fix 1 — STEP 0.9 Normalization:**
+- Added Turkish→ASCII conversion before searches table lookup
+- Keyword: lowercase + ç→c, ş→s, ı→i, ğ→g, ü→u, ö→o + strip "ticareti/satıcısı/dağıtıcısı"
+- Location: lowercase + Turkish→ASCII + strip ", İzmir"/", İstanbul" suffixes
+- Result: "demir çelik ticareti" + "Kemalpasa, İzmir" → normalized → matches previous "demir celik" + "kemalpasa"
 
-**Tier 2 — Core behavioral fixes:**
+**Fix 2 — STEP 1.5 Mandatory DB Gate (Two-Pass):**
+- ⛔ Added marker: NEVER delegate to subagent. Direct Supabase MCP call only.
+- **Pass 1 (exact SQL):** Query for normalized name + URL matches in DB → remove exact duplicates
+- **Pass 2 (Haiku fuzzy):** For remaining companies, pass to Haiku: "Do any incoming names match existing DB names from same city?" → catch abbreviations/misspellings
+- Result: SQL handles exact matches, Haiku handles edge cases. KANAAT DEMİR removed at Pass 1.
 
-1. **STEP 1: Buffering strategy**
-   - Changed `organizationsPerQueryLimit` from hardcoded `3` to dynamic `min(count * 2, 50)`
-   - Request double: Outscraper will return both new + known companies
-   - STEP 1.5 filters out known ones, still yields `count` fresh prospects
-   - Cost: ~$0.003/record; for count=5 with buffer=10, worst case ~$0.015 extra
+**Fix 3 — STEP 3 Safety Net:**
+- ⛔ Added marker: This is final check before STEP 4 research (catches edge cases STEP 1.5 missed)
+- Clarified scope: URL + name dedup for Stage 1 survivors only (cross-query handled by STEP 1.5)
 
-2. **STEP 1.5: New pre-check step (between STEP 1 & STEP 2)**
-   - Query DB for all companies already known (by normalized name OR URL)
-   - Completely remove from processing queue before STEP 2
-   - CDC DEMİR ÇELİK is caught here on second run → doesn't enter STEP 2 → not in Telegram
-   - Result: Silent filtering (no ❌ Elenenler mention on repeat)
+**Fix 4 — Pre-Outscraper Warning:**
+- Updated STEP 0.9 re-run message: "This search found N companies on [date]. These are likely already in your DB. Outscraper cost ~$X. There may be new listings since then. Proceed?"
+- Prevents user from wasting money on re-runs
 
-3. **STEP 2 tail: Fixed SQL**
-   - Corrected malformed JSON: `'["reason": "?"]'::jsonb` → `jsonb_build_object('reason', ?)`
-   - Updated conflict handling with explicit target (normalized name matching)
+**Documentation updates:**
+- Updated Full 12-Step Execution Flow with ⛔ markers on critical direct-SQL steps (0.9, 1.5, 3, 8, 9, 9.5)
+- Clarified which steps must NOT be delegated to subagents
 
-4. **STEP 3: Clarified scope**
-   - Removed claim "prevents CDC from re-appearing" (now STEP 1.5's job)
-   - Still useful for URL dedup of Stage 1 survivors (edge cases)
-
-5. **Execution flow: Updated 11 → 12 steps**
-   - New step 4: STEP 1.5 (cross-query dedup)
-   - All subsequent steps renumbered
-
-**Verification sequence:**
-1. Run: `keyword: "demir çelik ticareti", location: "Kemalpaşa", count: 3`
-   - CDC should appear in ❌ Elenenler (no website, pre_filter_discard status)
-   - Verify: `SELECT name, status FROM prospects WHERE name LIKE '%CDC%'` → `pre_filter_discard`
-2. Run again: `keyword: "çelik satıcı", location: "Kemalpaşa", count: 3`
-   - CDC should NOT appear in Telegram output (caught at STEP 1.5, silent)
-   - Verify: `SELECT COUNT(*) FROM prospects WHERE name LIKE '%CDC%'` → still 1 (no duplicates)
-
-**Commits pending:** Will be: `fix: prospect-research SKILL.md v3.3 — full dedup stress test + cross-query prevention`
+**Commit:** `fix: prospect-research SKILL.md v3.4 — four-bug dedup fix (STEP 0.9 + 1.5 + 3)` (deployed)
 
 ---
 
@@ -123,11 +118,11 @@
 
 | Blocker | Impact | Resolution needed |
 |---------|--------|-------------------|
-| ✅ .env.local vars not exported to child processes | Repeated skill failures: OUTSCRAPER_API_KEY & SUPABASE_KEY appeared "missing" despite being in .env.local | Fixed in session 9: Added `export` prefix to all 8 vars in .env.local. Root cause: `source .env.local` sets shell-local vars but doesn't export them; child processes (curl, subagents) couldn't see them. Test was wrong (`env | grep` only shows exported vars). Updated CLAUDE.md + SKILL.md to document this. |
-| ✅ Supabase MCP project_id not documented | Skill had no way to know which project_id to use → guessed wrong → permission denied | Fixed in session 9: Added `SUPABASE_PROJECT_ID=zbzhyhpphsugepwcqmvg` to .env.local. Updated CLAUDE.md + SKILL.md to document it as required. |
-| ✅ SKILL.md v3 async API bug | Discovery was returning Pending status forever | Fixed in session 4: Switched to correct POST /google-maps-search endpoint with proper JSON body (commit e61dbe4) |
-| ✅ Dedup gaps (v3.1–3.2) | CDC DEMİR ÇELİK kept reappearing | Fixed in session 8: Moved dedup from STEP 3 → new STEP 1.5 (pre-check before filtering). Added buffering strategy. Cross-query dedup now working. |
-| prospect-research v3.3 ready for production | All schema fixes + dedup fixes + buffering implemented | Ready for live testing. 10 companies returned in Kemalpaşa test. Next: run full pipeline (STEP 2-9) and insert to DB. |
+| ✅ .env.local vars not exported to child processes | Repeated skill failures: OUTSCRAPER_API_KEY & SUPABASE_KEY appeared "missing" despite being in .env.local | Fixed in session 9: Added `export` prefix to all 8 vars in .env.local. Updated CLAUDE.md + SKILL.md to document this. |
+| ✅ Supabase MCP project_id not documented | Skill had no way to know which project_id to use → guessed wrong → permission denied | Fixed in session 9: Added `SUPABASE_PROJECT_ID=zbzhyhpphsugepwcqmvg` to .env.local. Updated CLAUDE.md + SKILL.md. |
+| ✅ SKILL.md v3 async API bug | Discovery was returning Pending status forever | Fixed in session 4: Switched to correct POST /google-maps-search endpoint (commit e61dbe4). |
+| ✅ Dedup gaps (v3.1–3.3) | CDC DEMİR ÇELİK kept reappearing; STEP 1.5 silently skipped | Fixed in session 10: Refactored STEP 1.5 as mandatory direct DB Gate (two-pass); added STEP 0.9 normalization; added ⛔ markers to all critical direct-SQL steps. |
+| prospect-research v3.4 needs end-to-end test | All fixes deployed but untested with real Outscraper data | Next: Run with `keyword: "demir çelik ticareti", location: "Kemalpasa", count: 5`. Verify: DB inserts, Telegram notification, searches table log, no duplicates on re-run. |
 
 ---
 
@@ -139,26 +134,31 @@
 
 When you open Claude Code next:
 
-> **Priority 1: Run prospect-research v3.3 end-to-end (env var fix now deployed)**
-> - ✅ .env.local now has `export` on all vars + SUPABASE_PROJECT_ID added
-> - ✅ CLAUDE.md + SKILL.md updated with env var documentation + fixes
+> **Priority 1: Run prospect-research v3.4 end-to-end (four-bug dedup fix now deployed)**
+> - ✅ STEP 0.9 normalization deployed (Turkish→ASCII, strip suffixes)
+> - ✅ STEP 1.5 two-pass dedup deployed (⛔ mandatory direct DB Gate: Pass 1 SQL, Pass 2 Haiku fuzzy)
+> - ✅ STEP 3 safety net marked (⛔, final check before research)
 > - Ready to run: `keyword: "demir çelik ticareti", location: "Kemalpasa", count: 5`
-> - Verify: All 5 companies inserted to DB with score, email_draft, ai_opportunities, contact data (phone, address, email)
+> - Verify: All 5 companies inserted to DB with score, email_draft, ai_opportunities, contact data
 > - Verify: Telegram notification sent with correct formatting (MarkdownV2)
-> - Verify: searches table logged with result_count and last_searched_at
+> - Verify: searches table logged with keyword_normalized, location_normalized, result_count, last_searched_at
 >
-> **Priority 2: Test cross-query dedup (session 8 fix validation)**
+> **Priority 2: Test STEP 0.9 normalization + two-pass dedup (v3.4 fix validation)**
 > - After first run populates DB with Kemalpasa prospects:
-> - Run 2: `keyword: "çelik satıcı", location: "Kemalpasa", count: 5`
-> - Verify: Known companies removed at STEP 1.5 (silent filtering, no Telegram mention of duplicates)
-> - Verify: DB shows no duplicate records (same company not in prospects table twice)
+> - Run 2: `keyword: "demir celik ticareti", location: "Kemalpasa, İzmir", count: 5` (variant spelling/location)
+> - Verify: STEP 0.9 recognizes as same search (normalized values match)
+> - Verify: Asks user before re-running Outscraper (with cost warning)
+> - Verify: STEP 1.5 Pass 1 (exact SQL) removes known companies
+> - Verify: STEP 1.5 Pass 2 (Haiku fuzzy) catches any near-duplicates
+> - Verify: DB shows no duplicate records
 >
-> **Priority 3: Commit infrastructure fix**
-> - `git commit -m "fix: .env.local export + SUPABASE_PROJECT_ID — env var sourcing now reliable"`
-> - Updates: .env.local (export prefix), CLAUDE.md (env var doc), SKILL.md (Supabase project_id req)
+> **Priority 3: Test re-run with different keyword (cross-query dedup)**
+> - Run 3: `keyword: "çelik satıcı", location: "Kemalpasa", count: 5` (different keyword, same city)
+> - Verify: STEP 1.5 Pass 1 removes companies from previous search (KANAAT DEMİR, etc.)
+> - Verify: Telegram shows only NEW prospects (net addition, no duplicate mentions)
 >
 > **Priority 4: Validate company-lookup with prospect-research data**
-> - Once prospect-research populates DB with real data, test company-lookup queries
+> - Once prospect-research populates DB with 10+ real prospects, test company-lookup
 > - Verify Haiku parser works for Turkish/English natural language
 > - Test all 7 verification cases from SKILL.md
 >
@@ -182,5 +182,6 @@ When you open Claude Code next:
 |------|------|-------|-------------|
 | 2026-03-17 (session 8) | Dedup stress test + v3.3 fixes + schema updates | Haiku | $0.01 |
 | 2026-03-17 (session 9) | Env var debugging + .env.local export fix + SUPABASE_PROJECT_ID setup + CLAUDE.md + SKILL.md updates | Haiku | $0.01 |
+| 2026-03-17 (session 10) | Four-bug dedup fix: STEP 0.9 normalization + STEP 1.5 two-pass refactor + STEP 3 safety net + ⛔ markers + STATE.md update | Haiku | $0.01 |
 
 **Monthly budget target:** Keep automated daily costs under $0.50/day (~$15/month)
