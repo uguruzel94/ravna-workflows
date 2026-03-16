@@ -32,7 +32,7 @@ description: >
 ```json
 {
   "keyword": "tıbbi cihaz distributor",
-  "city": "İstanbul",
+  "location": "Bornova",
   "count": 10,
   "intent": "Tıbbi cihaz ve medikal ekipman distribütörleri. Hastanelere, kliniklere veya laboratuvarlara satan firmalar. Dişçi, eczane, veteriner, optik değil.",
   "industry": "healthcare"
@@ -42,7 +42,7 @@ description: >
 | Param | Required | Type | Default | Notes |
 |-------|----------|------|---------|-------|
 | `keyword` | yes | string | — | Search term for Outscraper Maps query. E.g., "tıbbi cihaz distributor", "muhasebe firması" |
-| `city` | yes | string | — | Turkish city name (e.g., "İstanbul", "Ankara") |
+| `location` | yes | string | — | Turkish city or district name (e.g., "İstanbul", "Ankara", "Bornova", "Besiktas"). Districts are automatically normalized to parent city for Maps API if needed. |
 | `count` | no | integer | 10 | How many companies to research. No hardcoded cap; respects user input. |
 | `intent` | no | string | inferred | Natural language: what to find AND what to exclude. E.g., "healthcare + distribution, no retail clinics". Used by Sonnet for intent matching. If omitted, Sonnet infers from keyword + industry. |
 | `industry` | no | string | — | Helps with Brave fallback and Sonnet context. |
@@ -74,21 +74,24 @@ description: >
 **Task:** Convert user input to structured schema:
 
 ### Turkish examples:
-- `"bana İzmir'de demir çelik ticareti yapan 5 şirket bulabilir misin?"` → `{keyword: "demir çelik ticareti", city: "İzmir", count: 5}`
-- `"İstanbul'da muhasebe firması ara, 10 tane"` → `{keyword: "muhasebe firması", city: "İstanbul", count: 10}`
-- `"Ankara'da yazılım şirketi, ama küçük, 7 tane"` → `{keyword: "yazılım şirketi", city: "Ankara", count: 7, intent: "küçük şirket, yazılım"}`
+- `"bana İzmir'de demir çelik ticareti yapan 5 şirket bulabilir misin?"` → `{keyword: "demir çelik ticareti", location: "İzmir", count: 5}`
+- `"İstanbul'da muhasebe firması ara, 10 tane"` → `{keyword: "muhasebe firması", location: "İstanbul", count: 10}`
+- `"Bornova'da yazılım şirketi ara, 7 tane"` → `{keyword: "yazılım şirketi", location: "Bornova", count: 7}` (district supported)
+- `"Ankara'da yazılım şirketi, ama küçük, 7 tane"` → `{keyword: "yazılım şirketi", location: "Ankara", count: 7, intent: "küçük şirket, yazılım"}`
 
 ### English examples:
-- `"Find me 5 steel trading companies in Izmir"` → `{keyword: "steel trading", city: "İzmir", count: 5}`
-- `"Search for accounting firms in Istanbul, 10 results"` → `{keyword: "accounting firm", city: "İstanbul", count: 10}`
+- `"Find me 5 steel trading companies in Izmir"` → `{keyword: "steel trading", location: "İzmir", count: 5}`
+- `"Search for accounting firms in Istanbul, 10 results"` → `{keyword: "accounting firm", location: "İstanbul", count: 10}`
+- `"Find 3 companies in Bornova"` → `{keyword: "companies", location: "Bornova", count: 3}` (district supported)
 
 **Parser logic:**
 1. Detect language (Turkish or English)
-2. Extract: `keyword` (what sector/service), `city` (Turkish city), `count` (number, default 10)
+2. Extract: `keyword` (what sector/service), `location` (Turkish city or district), `count` (number, default 10)
 3. Infer `intent` if user provides exclusions (e.g., "ama değil", "except", "no")
-4. If city is English name (e.g., "Izmir"), convert to Turkish (İzmir)
-5. Output JSON matching INPUT SCHEMA
-6. Set response language = detected language
+4. If location is English name (e.g., "Izmir" or "Besiktas"), convert to Turkish ("İzmir", "Beşiktaş")
+5. Normalize district names (e.g., "bornova" → "Bornova", "besiktas" → "Beşiktaş")
+6. Output JSON matching INPUT SCHEMA with `location` field
+7. Set response language = detected language
 
 **Continue all subsequent steps (1-9) in the detected language.**
 

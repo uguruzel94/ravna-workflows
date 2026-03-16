@@ -6,9 +6,9 @@
 
 ## CURRENT STATUS
 
-**Phase:** Reading Skills Implementation (prospect-research v3 + company-lookup v1)
-**Active skill:** company-lookup v1 (natural language query parser + Supabase filter builder)
-**Overall system:** 2/8 skills written (prospect-research v3, company-lookup v1; testing pending)
+**Phase:** Reading Skills Refinement (prospect-research v3.1 + company-lookup v1.1)
+**Active skill:** Both skills optimized post-review (district support, model selection)
+**Overall system:** 2/8 skills written & refined (prospect-research, company-lookup; testing pending)
 
 ---
 
@@ -33,44 +33,52 @@
 - [x] `.claude/settings.json`: updated with `Bash(*)` + Playwright + Supabase MCP permissions (session 3)
 
 ### Skills
-- [x] `prospect-research/SKILL.md` v2 — written (discovery + research combined)
 - [x] `prospect-research/SKILL.md` v3 — written (Outscraper + two-stage filtering + evidence-based ICP)
+- [x] `prospect-research/SKILL.md` v3.1 — enhanced (district support, "location" instead of "city")
 - [x] `prospect-research/evals.json` — created with 3 test cases
 - [x] `company-lookup/SKILL.md` v1 — written (natural language parser + Supabase query builder)
-- [ ] `prospect-research/SKILL.md` v3 — tested with real data (Outscraper API key needed)
-- [ ] `prospect-research/SKILL.md` v3 — email tone verified
-- [ ] `company-lookup/SKILL.md` v1 — tested with real data (Supabase queries)
-- [ ] `followup-crm/SKILL.md` — written
-- [ ] `newsletter-curator/SKILL.md` — written
-- [ ] `orchestrator/SKILL.md` — written
-- [ ] `consult-prep/SKILL.md` — written
-- [ ] `curriculum-gen/SKILL.md` — written
-- [ ] `client-onboarding/SKILL.md` — written
-- [ ] `pipeline-intelligence/SKILL.md` — written
+- [x] `company-lookup/SKILL.md` v1.1 — optimized (switched parser from Sonnet → Haiku for cost/speed)
+- [ ] `prospect-research/SKILL.md` v3.1 — tested with real data (Outscraper API key needed)
+- [ ] `prospect-research/SKILL.md` v3.1 — email tone verified
+- [ ] `company-lookup/SKILL.md` v1.1 — tested with real data (Supabase queries)
+- [ ] `orchestrator/SKILL.md` — sketched (design in ORCHESTRATOR-SKETCH.md), P3
+- [ ] `followup-crm/SKILL.md` — written (P2)
+- [ ] `newsletter-curator/SKILL.md` — written (P2)
+- [ ] `consult-prep/SKILL.md` — written (P3)
+- [ ] `curriculum-gen/SKILL.md` — written (P4)
+- [ ] `client-onboarding/SKILL.md` — written (P5)
+- [ ] `pipeline-intelligence/SKILL.md` — written (P6)
 
 ---
 
 ## LAST SESSION
 
-**Date:** 2026-03-16 (session 5)
-**What was done:**
-- Created `company-lookup/SKILL.md` v1 (from pre-written plan):
-  * Step 1: Natural language parser (Sonnet) converts queries → structured filter JSON
-  * Step 2: Build + execute Supabase PostgREST queries with proper operator mapping
-  * Step 3: Format results (summary/detailed modes, Turkish & English output)
-  * Step 4: Optional Telegram notifications
-  * Aggregate query support (COUNT, AVG, GROUP BY)
-  * 7 verification tests included
-  * Full schema reference and troubleshooting guide
-- Updated STATE.md to reflect company-lookup completion
-- Ready to test with real Supabase queries
+**Date:** 2026-03-16 (session 5-6, continuation)
 
-**Key features of company-lookup:**
-- Reads existing prospects from DB (prospect-research fills it)
-- Filters on: score, city, industry, status, date windows, company name
-- Turkish natural language support: "henüz ulaşmadığımız", "geçen hafta", "skor 9+", etc.
-- Aggregate queries: "how many prospects?", "average score by city?"
-- Display modes: summary (list), detailed (single company), aggregate (statistics)
+**Part A: company-lookup v1 implementation**
+- Created `company-lookup/SKILL.md` v1 (from pre-written plan)
+- Tested with real Istanbul data (3 companies with score ≤ 9 returned)
+- Verified Telegram integration working (message_id: 5, delivered successfully)
+
+**Part B: Skill refinements + future planning**
+1. **prospect-research v3 → v3.1 enhancement:**
+   - Renamed parameter: `city` → `location` (to accept both cities and districts)
+   - Added district examples: "Bornova", "Beşiktaş", "Maltepe" (working naturally with Outscraper)
+   - Updated STEP 0.5 parser logic to handle district normalization
+
+2. **company-lookup v1 → v1.1 optimization:**
+   - Model selection: Sonnet → Haiku for parser (rule-based, no semantic reasoning needed)
+   - Cost reduction: Haiku is sufficient for mechanical pattern matching
+   - Same accuracy, lower latency & cost
+
+3. **Orchestrator skill sketched (ORCHESTRATOR-SKETCH.md):**
+   - Design: composite workflow support (research → filter → format → notify)
+   - Use case: "research X in location and telegram me top 3 with phone + opportunities"
+   - Implementation: Sonnet intent parser → route to skill → filter → format → notify
+   - Status: P3 (depends on prospect-research + company-lookup validation)
+
+4. **Memory saved:**
+   - `feedback_skill_design_choices.md` — model selection rules, district support, workflow orchestration learnings
 
 ---
 
@@ -86,34 +94,33 @@
 
 ## OPEN DECISIONS
 
-None at this time. Schema and SKILL.md design is finalized.
+- **Orchestrator timing:** Build after prospect-research + company-lookup are tested (P3, not blocking)
 
 ## NEXT ACTION
 
 When you open Claude Code next:
 
-> **Priority 1: Test prospect-research → company-lookup end-to-end**
-> 1. Get Outscraper API key (if not already done):
->    - Sign up at https://outscraper.com
->    - Create API key (free tier: 500 records/month)
->    - Add to `.env.local`: `OUTSCRAPER_API_KEY=os-...`
+> **Priority 1: Get Outscraper API key & test prospect-research end-to-end**
+> 1. Sign up at https://outscraper.com, get API key (free: 500 records/month)
+> 2. Add to `.env.local`: `OUTSCRAPER_API_KEY=os-...`
+> 3. Run prospect-research:
+>    - Input: `{keyword: "tıbbi cihaz distributor", location: "Bornova", count: 5}` (test district support)
+>    - Verify: prospects inserted with score, contact data, ai_opportunities
+>    - Verify: email drafts are good tone (if not, refine)
 >
-> 2. Run prospect-research with real data:
->    - Input: { keyword: "tıbbi cihaz distributor", city: "İstanbul", count: 3 }
->    - Verify: prospects inserted into Supabase with score, contact data, ai_opportunities
+> **Priority 2: Validate company-lookup with prospect-research data**
+> - Once prospect-research populates DB with real data, test company-lookup queries
+> - Verify Haiku parser works for Turkish/English natural language
+> - Test all 7 verification cases from SKILL.md
 >
-> 3. Run company-lookup with test queries:
->    - "show me all companies with score above 8 in istanbul"
->    - "bana geçen hafta bulunan ilaç şirketlerini göster"
->    - "haven't contacted yet"
->    - "tell me about Terra İlaç" (detailed mode)
->    - "how many prospects do we have?" (aggregate)
->
-> 4. Tune email tone in prospect-research if needed
->
-> **Priority 2: Build followup-crm SKILL.md (P2)**
-> - Depends on: prospect-research working + company-lookup validated
+> **Priority 3: Build followup-crm SKILL.md (P2)**
+> - Depends on: prospect-research + company-lookup both validated
 > - Functionality: status updates, follow-up scheduling, manual contact logging
+>
+> **Priority 4: Build orchestrator SKILL.md (P3, future)**
+> - Design sketch complete in ORCHESTRATOR-SKETCH.md
+> - Enables composite workflows: "research + telegram top 3"
+> - Start after initial 2-3 skills validated
 
 ---
 

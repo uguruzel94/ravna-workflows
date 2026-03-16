@@ -21,9 +21,11 @@ This is **read-only** — no status updates. Those belong in followup-crm.
 
 ## EXECUTION FLOW
 
-### STEP 1: Natural Language Parser (Sonnet)
+### STEP 1: Natural Language Parser (Haiku)
 
 **Goal:** Convert raw user query → structured filters JSON.
+
+**Model:** Haiku (mechanical parsing, deterministic rules)
 
 **Input:** User's question (Turkish or English).
 
