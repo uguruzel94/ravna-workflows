@@ -1,0 +1,244 @@
+- generic [ref=e2]:
+  - banner [ref=e4]:
+    - generic [ref=e7]:
+      - generic [ref=e8]:
+        - link "Çelmak Çelik Makine Ticaret ve Sanayi A.Ş." [ref=e10] [cursor=pointer]:
+          - /url: /tr/
+          - img "Çelmak Çelik Makine Ticaret ve Sanayi A.Ş." [ref=e11]
+        - generic:
+          - text: +  +  +  +  + + + +
+          - link "" [ref=e12] [cursor=pointer]:
+            - /url: "#"
+            - generic [ref=e13]: 
+      - generic [ref=e16]:
+        - img "Türkçe" [ref=e17]
+        - generic [ref=e18]: 
+  - generic [ref=e22]:
+    - generic [ref=e23]:
+      - generic [ref=e25]:
+        - img "Çelmak Çelik Makine Ticaret ve Sanayi A.Ş." [ref=e30]
+        - paragraph [ref=e380]: 1967'den beri
+        - paragraph [ref=e382]:
+          - text: Yarım asırdır
+          - text: yenilenerek hep ileri
+        - paragraph [ref=e384]: Kurulduğu günden bugüne müşteri memnuniyetini ön planda tutan ve bunun için sürekli olarak kendini yenileyen, geliştiren ve müşteri ihtiyaçlarını belirleyip söz konusu ihtiyaçlara yanıt verebilmek için gerekli çalışmaları yapan, sektöründe öncü bir firma olmanın gururunu yaşıyoruz.
+        - paragraph [ref=e386] [cursor=pointer]: Devamı
+      - generic:
+        - link "start slideshow":
+          - /url: "#"
+        - generic:
+          - link "jump to slide 1":
+            - /url: "#"
+          - link "jump to slide 2":
+            - /url: "#"
+          - link "jump to slide 3":
+            - /url: "#"
+          - link "jump to slide 4":
+            - /url: "#"
+          - link "jump to slide 5":
+            - /url: "#"
+        - link "stop slideshow":
+          - /url: "#"
+    - generic [ref=e33]:
+      - generic:
+        - generic [ref=e35]:
+          - heading "Hizmetlerimiz" [level=3] [ref=e36]
+          - separator [ref=e37]
+          - link "Devamı" [ref=e38] [cursor=pointer]:
+            - /url: /tr/service/
+            - generic [ref=e39]: Devamı
+          - separator [ref=e40]
+          - img "celmak" [ref=e41]
+        - generic [ref=e43]:
+          - heading "Çelik servis merkezimizdeki deneyimli çalışan kadromuz ve ileri teknoloji makine parkurumuz ile müşterilerimize üretim kalitesi uluslararası sertifikalarla tescillenmiş çeşitli hizmetler sunmaktayız." [level=6] [ref=e45]
+          - link "CAD-CAM" [ref=e48] [cursor=pointer]:
+            - /url: https://celmak.com.tr/tr/cad-cam
+            - separator [ref=e51]
+            - heading "CAD-CAM" [level=5] [ref=e52]
+          - link "Boy Kesme" [ref=e55] [cursor=pointer]:
+            - /url: https://celmak.com.tr/tr/boy-kesme
+            - separator [ref=e58]
+            - heading "Boy Kesme" [level=5] [ref=e59]
+          - link "Plaka Taşlama" [ref=e62] [cursor=pointer]:
+            - /url: https://celmak.com.tr/tr/plaka-taslama
+            - separator [ref=e65]
+            - heading "Plaka Taşlama" [level=5] [ref=e66]
+          - link "CNC Lazer Kesim" [ref=e69] [cursor=pointer]:
+            - /url: https://celmak.com.tr/tr/cnc-lazer-kesim
+            - separator [ref=e72]
+            - heading "CNC Lazer Kesim" [level=5] [ref=e73]
+          - link "CNC Giyotin Kesim" [ref=e76] [cursor=pointer]:
+            - /url: https://celmak.com.tr/tr/cnc-giyotin-kesim
+            - separator [ref=e79]
+            - heading "CNC Giyotin Kesim" [level=5] [ref=e80]
+          - link "CNC Plazma Kesim" [ref=e83] [cursor=pointer]:
+            - /url: https://celmak.com.tr/tr/cnc-plazma-kesim
+            - separator [ref=e86]
+            - heading "CNC Plazma Kesim" [level=5] [ref=e87]
+          - link "CNC Abkant Büküm" [ref=e90] [cursor=pointer]:
+            - /url: https://celmak.com.tr/tr/cnc-abkant-bukum
+            - separator [ref=e93]
+            - heading "CNC Abkant Büküm" [level=5] [ref=e94]
+          - link "Ek Hizmetler" [ref=e97] [cursor=pointer]:
+            - /url: https://celmak.com.tr/tr/ek-hizmetler
+            - separator [ref=e100]
+            - heading "Ek Hizmetler" [level=5] [ref=e101]
+          - link "Ürünlerimiz" [ref=e104] [cursor=pointer]:
+            - /url: https://celmak.com.tr/tr/urunlerimiz
+            - separator [ref=e107]
+            - heading "Ürünlerimiz" [level=5] [ref=e108]
+    - generic [ref=e114]:
+      - generic:
+        - generic [ref=e116]:
+          - separator [ref=e119]
+          - heading "PROJE" [level=5] [ref=e120]
+          - heading "Hangi sektör için çalışıyor olursanız olun hayal ettiğiniz her projeyi mühendislik ekibimizin desteği ile tasarlayalım." [level=6] [ref=e121]:
+            - paragraph [ref=e122]: Hangi sektör için çalışıyor olursanız olun hayal ettiğiniz her projeyi mühendislik ekibimizin desteği ile tasarlayalım.
+        - generic [ref=e124]:
+          - separator [ref=e127]
+          - heading "ÜRETİM" [level=5] [ref=e128]
+          - heading "Projenizi üretim kalitesi uluslararası belgelerle tescillenmiş tesisimizde birinci sınıf malzemeler kullanarak, deneyimli çalışan kadromuz ve ileri teknoloji makinelerimiz ile üretelim." [level=6] [ref=e129]:
+            - paragraph [ref=e130]: Projenizi üretim kalitesi uluslararası belgelerle tescillenmiş tesisimizde birinci sınıf malzemeler kullanarak, deneyimli çalışan kadromuz ve ileri teknoloji makinelerimiz ile üretelim.
+        - generic [ref=e132]:
+          - separator [ref=e135]
+          - heading "TESLİMAT" [level=5] [ref=e136]
+          - heading "Ürünlerinizi kalite kontrolleri yapıldıktan sonra paketleyerek tam zamanında, sorunsuz ve hızlı bir şekilde teslim edelim." [level=6] [ref=e137]:
+            - paragraph [ref=e138]: Ürünlerinizi kalite kontrolleri yapıldıktan sonra paketleyerek tam zamanında, sorunsuz ve hızlı bir şekilde teslim edelim.
+    - generic [ref=e141]:
+      - generic:
+        - heading "Hi̇zmet Verdi̇ği̇mi̇z Sektörler" [level=3] [ref=e144]
+        - generic [ref=e146]:
+          - link "Gıda ve Ambalaj Makinaları" [ref=e148] [cursor=pointer]:
+            - /url: https://celmak.com.tr/tr/gida-ve-ambalaj-makinalari
+            - heading "Gıda ve Ambalaj Makinaları" [level=4] [ref=e152]
+          - link "Denizcilik ve Yatçılık" [ref=e154] [cursor=pointer]:
+            - /url: https://celmak.com.tr/tr/denizcilik-ve-yatcilik
+            - heading "Denizcilik ve Yatçılık" [level=4] [ref=e158]
+          - link "Aydınlatma" [ref=e160] [cursor=pointer]:
+            - /url: https://celmak.com.tr/tr/aydinlatma
+            - heading "Aydınlatma" [level=4] [ref=e164]
+    - generic [ref=e169]:
+      - generic [ref=e170]:
+        - heading "İletişim" [level=3] [ref=e171]
+        - list [ref=e173]:
+          - listitem [ref=e174]:
+            - generic [ref=e176]: 
+            - generic [ref=e177]:
+              - text: "Merkez :"
+              - text: 1. San. Sitesi 2825 Sok. No:28 Konak - İzmir
+              - text: "Fabrika :"
+              - text: Kemalpaşa OSB Mahallesi Dış Kapı No:59 Kemalpaşa - İzmir
+          - listitem [ref=e178]:
+            - generic [ref=e180]: 
+            - paragraph [ref=e181]:
+              - link "+90 232 433 70 49" [ref=e182] [cursor=pointer]:
+                - /url: tel:+90 232 433 70 49
+              - link "+90 232 877 06 18" [ref=e183] [cursor=pointer]:
+                - /url: tel:+90 232 877 06 18
+          - listitem [ref=e184]:
+            - generic [ref=e186]: 
+            - paragraph [ref=e187]:
+              - link "info@celmak.com.tr" [ref=e188] [cursor=pointer]:
+                - /url: mailto:info@celmak.com.tr
+              - link "celmak@celmak.com.tr" [ref=e189] [cursor=pointer]:
+                - /url: mailto:celmak@celmak.com.tr
+      - generic [ref=e191]:
+        - generic:
+          - button "Keyboard shortcuts"
+        - region "Map" [ref=e192]
+        - generic [ref=e193]:
+          - iframe [ref=e273]:
+            
+          - button "Toggle fullscreen view" [ref=e274] [cursor=pointer]
+          - generic:
+            - generic:
+              - button "Map camera controls" [ref=e276] [cursor=pointer]
+              - generic [ref=e278] [cursor=pointer]:
+                - button "Zoom in" [ref=e279]
+                - button "Zoom out" [ref=e281]
+          - link "Open this area in Google Maps (opens a new window)" [ref=e283] [cursor=pointer]:
+            - /url: https://maps.google.com/maps?ll=38.432261,27.174901&z=12&t=m&hl=en-US&gl=US&mapclient=apiv3
+            - img "Google" [ref=e285]
+          - generic [ref=e286]:
+            - button "Keyboard shortcuts" [ref=e292] [cursor=pointer]
+            - generic [ref=e297]: Map data ©2026
+            - link "Terms (opens in new tab)" [ref=e302] [cursor=pointer]:
+              - /url: https://www.google.com/intl/en-US_US/help/terms_maps.html
+              - text: Terms
+            - link "Report a map error" [ref=e307] [cursor=pointer]:
+              - /url: https://www.google.com/maps/@38.432261,27.174901,12z/data=!10m1!1e1!12b1?source=apiv3&rapsrc=apiv3
+  - contentinfo [ref=e308]:
+    - generic [ref=e311]:
+      - heading "Çelmak Çelik Makine Ticaret ve Sanayi A.Ş." [level=4] [ref=e312]
+      - heading "celmak+90 232 433 70 49" [level=3] [ref=e313]:
+        - img "celmak" [ref=e314]
+        - text: +90 232 433 70 49
+    - generic [ref=e316]:
+      - complementary [ref=e318]:
+        - img "celmak" [ref=e320]
+      - complementary [ref=e322]:
+        - heading "Ürünler" [level=4] [ref=e323]
+        - generic [ref=e324]:
+          - link "Paslanmaz Çelik Rulo / Paslanmaz Çelik Saclar" [ref=e325] [cursor=pointer]:
+            - /url: https://celmak.com.tr/tr/category/paslanmaz-celik-rulo-paslanmaz-celik-saclar
+            - heading "Paslanmaz Çelik Rulo / Paslanmaz Çelik Saclar" [level=6] [ref=e326]
+          - link "Paslanmaz Çelik Dolu Malzemeler" [ref=e327] [cursor=pointer]:
+            - /url: https://celmak.com.tr/tr/category/paslanmaz-celik-dolu-malzemeler
+            - heading "Paslanmaz Çelik Dolu Malzemeler" [level=6] [ref=e328]
+          - link "Paslanmaz Çelik Borular" [ref=e329] [cursor=pointer]:
+            - /url: https://celmak.com.tr/tr/category/paslanmaz-celik-borular
+            - heading "Paslanmaz Çelik Borular" [level=6] [ref=e330]
+          - link "Paslanmaz Çelik Profiller" [ref=e331] [cursor=pointer]:
+            - /url: https://celmak.com.tr/tr/category/paslanmaz-celik-profiller
+            - heading "Paslanmaz Çelik Profiller" [level=6] [ref=e332]
+          - link "Paslanmaz Çelik Bağlantı Elemanları (Fittings)" [ref=e333] [cursor=pointer]:
+            - /url: https://celmak.com.tr/tr/category/paslanmaz-celik-baglanti-elemanlari-fittings
+            - heading "Paslanmaz Çelik Bağlantı Elemanları (Fittings)" [level=6] [ref=e334]
+      - complementary [ref=e336]:
+        - heading "Hizmetlerimiz" [level=4] [ref=e337]
+        - generic:
+          - generic [ref=e338]:
+            - link "CAD-CAM" [ref=e339] [cursor=pointer]:
+              - /url: https://celmak.com.tr/tr/cad-cam
+              - heading "CAD-CAM" [level=6] [ref=e340]
+            - link "Boy Kesme" [ref=e341] [cursor=pointer]:
+              - /url: https://celmak.com.tr/tr/boy-kesme
+              - heading "Boy Kesme" [level=6] [ref=e342]
+            - link "Plaka Taşlama" [ref=e343] [cursor=pointer]:
+              - /url: https://celmak.com.tr/tr/plaka-taslama
+              - heading "Plaka Taşlama" [level=6] [ref=e344]
+            - link "CNC Lazer Kesim" [ref=e345] [cursor=pointer]:
+              - /url: https://celmak.com.tr/tr/cnc-lazer-kesim
+              - heading "CNC Lazer Kesim" [level=6] [ref=e346]
+          - generic [ref=e347]:
+            - link "CAD-CAM" [ref=e348] [cursor=pointer]:
+              - /url: https://celmak.com.tr/tr/cad-cam
+              - heading "CAD-CAM" [level=6] [ref=e349]
+            - link "Plaka Taşlama" [ref=e350] [cursor=pointer]:
+              - /url: https://celmak.com.tr/tr/plaka-taslama
+              - heading "Plaka Taşlama" [level=6] [ref=e351]
+            - link "CNC Plazma Kesim" [ref=e352] [cursor=pointer]:
+              - /url: https://celmak.com.tr/tr/cnc-plazma-kesim
+              - heading "CNC Plazma Kesim" [level=6] [ref=e353]
+            - link "CNC Abkant Büküm" [ref=e354] [cursor=pointer]:
+              - /url: https://celmak.com.tr/tr/cnc-abkant-bukum
+              - heading "CNC Abkant Büküm" [level=6] [ref=e355]
+            - link "Ek Hizmetler" [ref=e356] [cursor=pointer]:
+              - /url: https://celmak.com.tr/tr/ek-hizmetler
+              - heading "Ek Hizmetler" [level=6] [ref=e357]
+            - link "Ürünlerimiz" [ref=e358] [cursor=pointer]:
+              - /url: https://celmak.com.tr/tr/urunlerimiz
+              - heading "Ürünlerimiz" [level=6] [ref=e359]
+      - complementary [ref=e361]:
+        - link "celmak" [ref=e363] [cursor=pointer]:
+          - /url: http://celmakboru.com.tr/
+          - img "celmak" [ref=e364]
+    - generic [ref=e367]:
+      - link "" [ref=e368] [cursor=pointer]:
+        - /url: ""
+        - generic [ref=e370]: 
+      - generic [ref=e371]:
+        - text: © 2026 Çelmak Çelik Makine Ticaret ve Sanayi A.Ş. Developed by
+        - link "onno7" [ref=e372] [cursor=pointer]:
+          - /url: https://ceoyazilim.com
+          - img "onno7" [ref=e373]

@@ -147,10 +147,12 @@ CREATE TABLE searches (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   keyword TEXT NOT NULL,
   location TEXT NOT NULL,
+  keyword_normalized TEXT NOT NULL,
+  location_normalized TEXT NOT NULL,
   count INTEGER,
   results_count INTEGER,
   last_searched_at TIMESTAMP DEFAULT now(),
-  UNIQUE(keyword, location)
+  UNIQUE(keyword_normalized, location_normalized)
 );
 
 -- Indexes

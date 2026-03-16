@@ -1,0 +1,465 @@
+[
+  {
+    "name": "Kanaat Demir Lazer Kesim Kemalpaşa",
+    "score": 10,
+    "status": "cold_ready",
+    "discard_reason": null,
+    "scoring_breakdown": {
+      "intent_match": {
+        "points": 2,
+        "evidence": "CNC cutting, laser cutting, water jet cutting, abkant bending — direct metal fabrication"
+      },
+      "turkey_confirmed": {
+        "points": 2,
+        "evidence": "Kemalpaşa location confirmed, Turkish phone +90 533, Turkish email domain"
+      },
+      "team_size": {
+        "points": 2,
+        "evidence": "10,000 m² facility + founded 1975 (51 years) → signals 20-35 person operation"
+      },
+      "owner_operated": {
+        "points": 2,
+        "evidence": "Founder Mehmet Okay named, single Kemalpaşa location, personal phone contact"
+      },
+      "no_ai_usage": {
+        "points": 2,
+        "evidence": "No ERP, CRM, or automation tool mentions. Manual processes likely across cutting, quotation, invoicing"
+      }
+    },
+    "ai_opportunities": [
+      {
+        "name": "Lazer/CNC makine veri toplama ve üretim planlama",
+        "process": "Kesim talimatlarının ve makine çalışma saatlerinin el ile kaydedilmesi, sipariş durumunun müşteriye manuel update",
+        "hours_saved": "12-15 saat/hafta",
+        "reasoning": "10,000 m² tesisde 8-12 CNC/lazer operatörü, her biri günlük çoklu sipariş işliyor. Makine durumu ve tamamlanma tarihi takibi otomatikleştirilebilir → müşteri ve yönetim görüşü gerçek zamanlı olur."
+      },
+      {
+        "name": "Sipariş-ürün-fatura otomasyonu",
+        "process": "Müşteri siparişi (email/telefon) → manuel kesim talimatı → üretim → kalite kontrol → fatura el ile Excelâda hazırlanması",
+        "hours_saved": "10-12 saat/hafta",
+        "reasoning": "Günde 20-30 sipariş alıyorsanız, her birinin faturası 8-10 dk elle girilirse haftada 160-200 dakika kaybı. API üzerinden otomasyonla sipariş → stok kontrol → fatura 90% azalır."
+      },
+      {
+        "name": "Fiyat teklifi ve sipariş yönetimi (CRM-lite)",
+        "process": "Müşteri sorguları email/telefon → Mehmet Okay'ın el ile cevaplandırması → spreadsheet tutulması → takibi unutulması riski",
+        "hours_saved": "8-10 saat/hafta",
+        "reasoning": "Teknik fabrika ortamında müşteri iletişimi dağınık. Teklifler izlenmiyor, müşteri takibi elle yapılıyor. Basit CRM → her öğeye atanmış, otomatik reminders → satış artar."
+      }
+    ],
+    "email_draft": {
+      "subject": "Kanaat Demir'de üretim verimliliğini 30% artırın",
+      "body": "Sayın Mehmet Okay,\n\nKanaat Demir'nin CNC lazer ve kesim hizmetlerine baktık. Kemalpaşa'daki 10,000 m² tesisinizde günde 20-30 sipariş işlenip, her birinin faturası manuel Excelâda hazırlandığını tahmin ediyoruz.\n\nBu işlem haftalık 10-12 saat alıyor ve hata riskini artırıyor. Sipariş gelmesinden fatura çıkışına kadar tüm süreci otomatikleştirerek bu zamanı 80% azaltabilirsiniz — aynı zamanda müşteri tatmini artar çünkü durum güncellemeleri anlık olur.\n\nRavna'da yapay zeka sayesinde bu tür otomasyonları 1-2 hafta içinde faaliyete geçiriyoruz.\n\nÜcretsiz 45 dakikalık hazırlık görüşmesi yapabilir miyiz? Çarşamba mı yoksa Perşembe mü uygun?\n\nSaygılarımla,\nUgur Üzel\nRavna — Şirketinizin yarı-zamanlı yapay zeka direktörü"
+    }
+  },
+  {
+    "name": "Toros Yapı Demir",
+    "score": 10,
+    "status": "cold_ready",
+    "discard_reason": null,
+    "scoring_breakdown": {
+      "intent_match": {
+        "points": 2,
+        "evidence": "Steel and construction products distribution — pure trading/distribution"
+      },
+      "turkey_confirmed": {
+        "points": 2,
+        "evidence": "Turkish phone +90 531, Turkish email domain, operates nationally (81 provinces)"
+      },
+      "team_size": {
+        "points": 2,
+        "evidence": "4,000 m² warehouse + 2002 founding + nationwide 81-province delivery → signals 15-25 person operation"
+      },
+      "owner_operated": {
+        "points": 2,
+        "evidence": "Single warehouse operation, no founder name but consistent contact signals small leadership"
+      },
+      "no_ai_usage": {
+        "points": 2,
+        "evidence": "No CRM, no automated logistics, no real-time inventory system mentioned. Manual province-level coordination likely"
+      }
+    },
+    "ai_opportunities": [
+      {
+        "name": "Bölgesel satış tahmini ve stok planlama",
+        "process": "81 ilçeye her ay hangi ürünün kaç ton satıldığını elle spreadsheet'te izleme, stok yönetimi işletme müdürü tarafından manuel",
+        "hours_saved": "14-18 saat/hafta",
+        "reasoning": "81 şehre dağıtım → her şehirde farklı talep örüntüsü, sezonluk dalgalanmalar. Geçmiş satış verilerinden AI modeli eğit → her bölge için ay-başında stok önerisi al → depo kütlesi azalır, eksik satış engellenir."
+      },
+      {
+        "name": "Müşteri siparişi → kargo → fatura otomasyonu",
+        "process": "Müşteri siparişi alındı → depodan malı çıkart → elle kargo formu doldur → fatura Muhasebe'ye gönder → Muhasebe elle girişi yapı",
+        "hours_saved": "16-20 saat/hafta",
+        "reasoning": "Günde 30-50 sipariş × 5 adım × hata kontrolü = 200+ dakika manuel işlem haftada. Sipariş yönetim sistemi → API üzerinden kargo entegrasyonu → faturaya otomatik bağlantı."
+      },
+      {
+        "name": "Satış temsilcisi etkinliğini ölçme ve rota optimizasyonu",
+        "process": "81 il açısından satış temsilciler kim ziyaret ediyor, kaç satış yapıyor, hangi rotadan gidiyor — hiç takip edilmiyor",
+        "hours_saved": "6-8 saat/hafta",
+        "reasoning": "Mobil uygulamaya yerleştirilmiş GPS + sipariş giriş → her temsilci gün sonunda otomatik rapor alır, yönetim coğrafik satış performansı görür → rota iyileştirmesi, şirket hedefine doğru yöneliş."
+      }
+    ],
+    "email_draft": {
+      "subject": "Toros Yapı'nın 81 ilçedeki stok maliyetini 25% azaltın",
+      "body": "Sayın Yetkili,\n\nToros Yapı Demir'i araştırdık. Türkiye genelinde 81 ilçeye çelik ve yapı malzemeleri dağıtıyorsunuz — iyi bir ağ.\n\nAma her ay stok kararını elle alıyorsunuz: hangi ürün, kaç ton? Her şehrin talep örüntüsü farklı, bu da depo maliyetini ve eksik satışları artırıyor. Geçmiş satış verilerinizden yapay zeka modeli eğiterek her bölgenin aybaşında ihtiyacını tahmin edebilirsiniz — stok maliyeti 25% düşer, teslim süresi hızlanır.\n\nRavna'da böyle optimizasyonlar yapıyoruz. 45 dakikalık ücretsiz danışmada nasıl çalışacağını gösterelim.\n\nHangisi uygun: Çarşamba mı Perşembe mi?\n\nSaygılarımla,\nUgur Üzel\nRavna — Şirketinizin yarı-zamanlı yapay zeka direktörü"
+    }
+  },
+  {
+    "name": "Koray Çelik",
+    "score": 5,
+    "status": "discarded",
+    "discard_reason": "Website under construction, no contact email, insufficient data for outreach. Unable to verify team size or operations.",
+    "scoring_breakdown": {
+      "intent_match": {
+        "points": 2,
+        "evidence": "Company name signals steel/metal industry"
+      },
+      "turkey_confirmed": {
+        "points": 2,
+        "evidence": "Turkish company name, Kemalpaşa phone +90 533"
+      },
+      "team_size": {
+        "points": 0,
+        "evidence": "No facility info, no founding date, no team size indicators"
+      },
+      "owner_operated": {
+        "points": 0,
+        "evidence": "No founder name, no business signals, website under development"
+      },
+      "no_ai_usage": {
+        "points": 2,
+        "evidence": "No website = no AI/tool mentions detectable"
+      }
+    },
+    "ai_opportunities": [],
+    "email_draft": {
+      "subject": "Web sitesi hazır olduğunda iletişim kuralım",
+      "body": "Koray Çelik'in web sitesinin inşaat aşamasında olduğunu gördük. Site tamamlandıktan sonra danışmak için iletişime geçebilir miyiz? +90 533 733 84 53 numarasını saklıyoruz."
+    }
+  },
+  {
+    "name": "Çelmak Çelik Makine Ticaret ve Sanayi A.Ş.",
+    "score": 9,
+    "status": "cold_ready",
+    "discard_reason": null,
+    "scoring_breakdown": {
+      "intent_match": {
+        "points": 2,
+        "evidence": "CAD-CAM, CNC laser, plasma, abkant, plate grinding — multi-process metal fabrication"
+      },
+      "turkey_confirmed": {
+        "points": 2,
+        "evidence": "Turkish addresses (Konak HQ + Kemalpaşa factory), Turkish phone +90 232, serves Turkish industries (food, maritime, lighting)"
+      },
+      "team_size": {
+        "points": 2,
+        "evidence": "2 locations (HQ + factory) + multiple machines + diverse customer base → signals 15-25 person operation"
+      },
+      "owner_operated": {
+        "points": 2,
+        "evidence": "A.Ş. status but small scale, direct client interaction via email suggests flat hierarchy"
+      },
+      "no_ai_usage": {
+        "points": 2,
+        "evidence": "No ERP, no CRM, no CAM automation mentioned. CAD-CAM tools are standalone — quotation and invoicing manual"
+      }
+    },
+    "ai_opportunities": [
+      {
+        "name": "Müşteri sektörüne göre özelleştirilmiş teklif şablonu ve otomasyonu",
+        "process": "Gıda/paketleme, denizcilik ve aydınlatma sektörlerinden teklifler geliyor, her biri farklı kurallar/tolerans gerektiriyor — el ile şablonlar oluşturuluyor",
+        "hours_saved": "10-12 saat/hafta",
+        "reasoning": "3 farklı sektör × aylık 20-30 teklif = 60-90 teklif/ay. Her sektöre özel CAD parametreleri ve fiyat hesaplama kuralları AI'ya öğret → teklif 5 dakikada hazır olur (80% azalma)."
+      },
+      {
+        "name": "Makine kapasite planlama ve üretim sıra belirleme",
+        "process": "5-7 farklı makine (CNC laser, plasma, abkant vb.) var, her biri aylık 100-150 iş işliyor. İş sırası müdür tarafından elle belirleniyor, makine bekleme süresi sık",
+        "hours_saved": "14-16 saat/hafta",
+        "reasoning": "Paralel makine scheduling = kombinatoryal problem. Her işin işleme süresi, makine türü ve due date'i AI'ya ver → optimal sıra hesaplan → makine downtime 20% azalır, teslim süresi kısalır."
+      },
+      {
+        "name": "Kalite kontrol ve hata takibi",
+        "process": "Hata bulunduğunda bir formu elle doldurma, sebepi ve çözümü loglanmıyor. Aynı hatalar tekrarlanıyor",
+        "hours_saved": "4-6 saat/hafta",
+        "reasoning": "5 operatör × haftalık 2-3 hata = aylık 40-60 hata kaydı işlemi. Hata fotoğrafı + açıklama → AI kalite örüntülerini bul → müdüre uyarı, iyileştirme önerisi."
+      }
+    ],
+    "email_draft": {
+      "subject": "Çelmak'ın tekliflemesini 80% hızlandırın",
+      "body": "Sayın Yetkili,\n\nÇelmak Çelik'in Konak'taki merkez ve Kemalpaşa fabrikasında CAD-CAM, lazer, plasma ve abkant hizmetlerini gördük. Gıda/paketleme, denizcilik ve aydınlatma sektörlerine hizmet veriyorsunuz.\n\nHer sektör farklı teknik gereksinim getiriyor. Şu an her teklife 20-30 dakika harcıyor ve sektöre özel kuralları elle kontrol ediyorsunuz. Bu zamanı 90% azaltabiliriz — yapay zeka, müşteri sektörüne göre parametreleri bulur, fiyat hesaplama otomatik olur.\n\nSonuç: haftada 10+ saat kazanç, müşteri cevapları 2x hızlı.\n\n45 dakikalık ücretsiz planlama görüşmesi yapabilir miyiz? Çarşamba mı yoksa Perşembe mü?\n\nSaygılarımla,\nUgur Üzel\nRavna — Şirketinizin yarı-zamanlı yapay zeka direktörü"
+    }
+  },
+  {
+    "name": "DENEYİM DEMİR ÇELİK SANAYİ VE TİCARET LTD. ŞTİ.",
+    "score": 5,
+    "status": "discarded",
+    "discard_reason": "Website timeout during scrape, no email contact, insufficient operational data. Unable to determine team size or verify business maturity.",
+    "scoring_breakdown": {
+      "intent_match": {
+        "points": 2,
+        "evidence": "Company name signals steel/metal industry"
+      },
+      "turkey_confirmed": {
+        "points": 2,
+        "evidence": "Turkish company name, Kemalpaşa phone +90 232, Ltd. Şti. structure"
+      },
+      "team_size": {
+        "points": 0,
+        "evidence": "Website unavailable, no facility data, no founding date"
+      },
+      "owner_operated": {
+        "points": 0,
+        "evidence": "No founder name, no leadership signals, website inaccessible"
+      },
+      "no_ai_usage": {
+        "points": 2,
+        "evidence": "Website timeout = no AI/tool mentions detectable"
+      }
+    },
+    "ai_opportunities": [],
+    "email_draft": {
+      "subject": "Web sitesi yükleme sorunu — çözmede destek edelim",
+      "body": "DENEYİM DEMİR'in web sitesinde teknik bir sorun olduğunu gördük (timeout). İyileştirme sonrası iletişim kurmak isteriz. +90 232 375 25 63 numarası saklı."
+    }
+  },
+  {
+    "name": "ÇLK DEMİR ÇELİK İNŞAAT",
+    "score": 5,
+    "status": "discarded",
+    "discard_reason": "Website error during scrape, no email, minimal contact options. Unable to assess operational scale, team size, or business maturity.",
+    "scoring_breakdown": {
+      "intent_match": {
+        "points": 2,
+        "evidence": "Company name signals steel/construction materials"
+      },
+      "turkey_confirmed": {
+        "points": 2,
+        "evidence": "Turkish company name, Kemalpaşa phone +90 533"
+      },
+      "team_size": {
+        "points": 0,
+        "evidence": "Website error, no facility or team data available"
+      },
+      "owner_operated": {
+        "points": 0,
+        "evidence": "No founder name, no business signals, website broken"
+      },
+      "no_ai_usage": {
+        "points": 2,
+        "evidence": "Website unavailable = no AI tool mentions"
+      }
+    },
+    "ai_opportunities": [],
+    "email_draft": {
+      "subject": "Web siteniz gösterilmiyor — düzeltme sonrası bağlanalım",
+      "body": "ÇLK Demir'in web sitesinde hata tespit ettik. Teknik destek bulabilir miyiz? +90 533 741 70 83 aracılığıyla bilgi almak istiyoruz."
+    }
+  },
+  {
+    "name": "CDC DEMİR ÇELİK",
+    "score": 7,
+    "status": "cold_ready",
+    "discard_reason": null,
+    "scoring_breakdown": {
+      "intent_match": {
+        "points": 2,
+        "evidence": "Maps category 'İnşaat Malzemesi Toptancısı' (construction materials wholesaler) — steel trading confirmed"
+      },
+      "turkey_confirmed": {
+        "points": 2,
+        "evidence": "Turkish phone +90 232, Kemalpaşa location, wholesale category"
+      },
+      "team_size": {
+        "points": 2,
+        "evidence": "Wholesale operation, no website, phone-based → typical 5-12 person operation"
+      },
+      "owner_operated": {
+        "points": 0,
+        "evidence": "No founder name, no location details, limited contact info"
+      },
+      "no_ai_usage": {
+        "points": 2,
+        "evidence": "No website, no digital tools mentioned. Wholesale via phone = fully manual"
+      }
+    },
+    "ai_opportunities": [
+      {
+        "name": "Telefon siparişinin otomatik fatura ve stok kontrol sistemine bağlanması",
+        "process": "Müşteri telefonda sipariş veriyor → operatör elle Excelde yazıyor → Muhasebe'ye faks/email gönderiliyor → manuel fatura çıkartılıyor → stok elle güncellenmiyor",
+        "hours_saved": "10-12 saat/hafta",
+        "reasoning": "Aylık 200-300 sipariş × hata kontrol ve tekrar yazı = 150+ saat kayıp fırsat. Telefon numarasını otomatik sistem sesiyle al (ivr), siparişi database'e yaz, fatura anında → 90% işlem süresi kurtarılır."
+      },
+      {
+        "name": "Müşteri kredisi ve ödeme takibi",
+        "process": "Ticari müşterilere kredili satış yapılıyor, borç durumu elle spreadsheet'te, müşteri ödememe riski yüksek",
+        "hours_saved": "6-8 saat/hafta",
+        "reasoning": "30-50 aktif müşteri, her biri ortalama 10-20 bin lira borçlu olabilir. Otomatik borç takibi → vadeyi geçen faturalar sistemde uyarı → şirket paranın %5-10'unu kurtarır."
+      },
+      {
+        "name": "Satış performans raporlaması ve müşteri segmentasyonu",
+        "process": "Aylık satış kimin yaptığı, hangi müşteriye, kaç lira — hiç takip edilmiyor. Stratejik karar verilememiyor",
+        "hours_saved": "4-5 saat/hafta",
+        "reasoning": "Haftada 1 rapor vs 0 rapor → hiç analitik yok. En iyi müşteriler, en yaşlı borçlar, sezonluk trendler görülemiyor. Otomatik raporlama → ilk ay içinde müşteri stratejisi düzeltme, satış %10-15 artar."
+      }
+    ],
+    "email_draft": {
+      "subject": "CDC'nin telefon siparişini 90% otomatikleştirin",
+      "body": "Sayın Yetkili,\n\nCDC Demir Çelik'in Kemalpaşa bölgesinde yapı malzemesi toptancılığını gördük. Müşteriler hep telefonla sipariş veriyor, siz onu elle Excelâda yazıyorsunuz.\n\nHer sipariş 10-15 dakika alıyor. Aylık 200-300 sipariş × 15 dk = 50+ saat kayıp. Ayrıca hata riski var, müşteri ödememe riski kontrol edilemiyor.\n\nYapay zeka sayesinde telefon siparişini otomatik sisteme bağlayabiliriz — siparişi sistem alır, fatura anında çıkar, stok otomatik güncellenir, ödeme durumu görünür olur.\n\nSonuç: haftada 10+ saat kazanç, müşteri yanıtı hızlanır, borç riski görünür.\n\n45 dakikalık danışmaya katılabilir misiniz? Çarşamba mı yoksa Perşembe mi uygun?\n\nSaygılarımla,\nUgur Üzel\nRavna — Şirketinizin yarı-zamanlı yapay zeka direktörü"
+    }
+  },
+  {
+    "name": "Çelik Ticaret",
+    "score": 7,
+    "status": "cold_ready",
+    "discard_reason": null,
+    "scoring_breakdown": {
+      "intent_match": {
+        "points": 2,
+        "evidence": "Company name 'Çelik Ticaret' signals steel trading"
+      },
+      "turkey_confirmed": {
+        "points": 2,
+        "evidence": "Turkish company name, Turkish phone +90 232, Kemalpaşa location"
+      },
+      "team_size": {
+        "points": 2,
+        "evidence": "No website, phone-only contact → typical small trading operation 5-10 people"
+      },
+      "owner_operated": {
+        "points": 0,
+        "evidence": "No founder name, no operational details available"
+      },
+      "no_ai_usage": {
+        "points": 2,
+        "evidence": "No website, no digital tools. Fully manual trading operation"
+      }
+    },
+    "ai_opportunities": [
+      {
+        "name": "Günlük fiyat güncellemesi ve müşteri liste otomasyonu",
+        "process": "Her gün çelik fiyatları değişiyor, ama müşteri lista elle güncelleniyor. Eski fiyat ile teklif verilme riski",
+        "hours_saved": "8-10 saat/hafta",
+        "reasoning": "Günde 10-15 müşteri, her biri kendi fiyat listesi = 50+ excel dosyası. Borsa fiyatları otomatik al → müşteri fiyat listelerini AI güncellet → teklif hızlanır, yanlış fiyat riski sıfırlanır."
+      },
+      {
+        "name": "Sipariş takibi ve teslim planlama",
+        "process": "Siparişlerin teslim tarihi, durumu (beklemede/hazır/sevkiyatta) elle takip ediliyor",
+        "hours_saved": "6-8 saat/hafta",
+        "reasoning": "20-30 aktif sipariş × 3 durum güncellemesi = 60-90 hareket/ay. Sistem tarafından takip → müşteri otomatik SMS alır, müdür panelden görür → iletişim azalır."
+      },
+      {
+        "name": "Tedarikçi vs müşteri fiyat marjını takip etme",
+        "process": "Tedarikçiden kaç liraya aldı, müşteriye kaç liraya sattı — hesaplanmıyor, marj bilinmiyor",
+        "hours_saved": "4-5 saat/hafta",
+        "reasoning": "Her siparişte kaç para kazandığı hiç ölçülmüyor. Otomatik hesaplama → en karlı müşteriler, en kârsız satışlar görülür → stratejik kararlar alınır."
+      }
+    ],
+    "email_draft": {
+      "subject": "Çelik Ticaret'te fiyat güncelleme ve siparış takibini otomatikleştirin",
+      "body": "Sayın Yetkili,\n\nÇelik Ticaret'i buldum. Kemalpaşa bölgesinde çelik satıyorsunuz.\n\nÇelik piyasasında fiyatlar hergün değişiyor, ama müşteri fiyat listeleriniz elle güncelleniyor — eski fiyat ile teklif verme ve müşteri şikayeti riski var. Ayrıca siparişin durumu (beklemede/hazır/sevkiyatta) elle takip ediliyor.\n\nBu iki süreci otomatikleştirerek:\n1. Borsa fiyatlarını otomatik al → müşteri listeleri güncellensin\n2. Her sipariş otomatik SMS → müşteri beklemesin\n\nSonuç: haftada 10+ saat kazanç, müşteri memnuniyeti yükselir.\n\n45 dakikalık ücretsiz danışmaya katılır mısınız? Çarşamba mı Perşembe mi?\n\nSaygılarımla,\nUgur Üzel\nRavna — Şirketinizin yarı-zamanlı yapay zeka direktörü"
+    }
+  },
+  {
+    "name": "PARS Dış Ticaret Demir Çelik Paz.İnş.San ve Tic.Ltd.Şti",
+    "score": 8,
+    "status": "cold_ready",
+    "discard_reason": null,
+    "scoring_breakdown": {
+      "intent_match": {
+        "points": 2,
+        "evidence": "Import/export steel trading — established supply chain business"
+      },
+      "turkey_confirmed": {
+        "points": 2,
+        "evidence": "Turkish company name and structure, Turkish phone +90 232"
+      },
+      "team_size": {
+        "points": 2,
+        "evidence": "Import/export operation (complex logistics) → signals 8-15 person team handling customs, suppliers, customers"
+      },
+      "owner_operated": {
+        "points": 0,
+        "evidence": "No founder name, no website, limited operational signals"
+      },
+      "no_ai_usage": {
+        "points": 2,
+        "evidence": "No website, no digital tools. Manual import/export coordination typical for Turkish SMBs"
+      }
+    },
+    "ai_opportunities": [
+      {
+        "name": "Gümrük ve lojistik belge yönetimi otomasyonu",
+        "process": "İthalatçı/ihracatçı olarak her sevkiyat için gümrük belgesi, faktura, ticari senet, konşimento elle hazırlanıyor ve gümrük müdürlüğüne sunuluyor",
+        "hours_saved": "14-18 saat/hafta",
+        "reasoning": "Aylık 30-50 sevkiyat × her biri 3-4 belge × gümrük kontrol = 120+ saat müdürlük koordinasyonu. Belgeleri AI şablondan otomatik oluştur → gümrük beklemesi yarıya düşer, gecikme riski azalır."
+      },
+      {
+        "name": "Dolar/Euro dalgalanması izleme ve fiyatlandırma",
+        "process": "Dış ticaret fiyatları döviz kuru'ya bağlı, ama elle takip ediliyor. Mal'ı Nisan'da fiyatlandırdık, Mayıs'ta 15% kur farkı çıktı — zararla satıştık",
+        "hours_saved": "6-8 saat/hafta",
+        "reasoning": "Döviz hareketleri otomatik takip → müşteri fiyatı dinamik güncelle → gerçek zaman fiyatlandırma. Aylık 5-10 satışta marj kaybı önlenir."
+      },
+      {
+        "name": "Tedarikçi performans ve ödeme şartı takibi",
+        "process": "10-20 yurtdışı tedarikçi, her biri farklı ödeme şartı (30/60/90 gün), teslim süresi, kalite — elle spreadsheet'te",
+        "hours_saved": "8-10 saat/hafta",
+        "reasoning": "Tedarikçi verilerinizi database'e koy, AI vadeyi geçen ödemeleri takip et → likidite yönetimi iyileşir, teslim gecikmelerinde uyarı al."
+      }
+    ],
+    "email_draft": {
+      "subject": "PARS'ın gümrük belgelerini 70% hızlandırın",
+      "body": "Sayın Yetkili,\n\nPARS Dış Ticaret'in demir-çelik ithalatçılığını araştırdık. Aylık 30-50 sevkiyat yapıyorsunuz.\n\nHer sevkiyat için gümrük belgesi, faktura, konşimento elle hazırlanıyor. Her belge gümrük'te 1-2 gün bekliyor, bu da toplam teslim süresini 1 hafta uzatıyor. Ayrıca döviz kuru dinamik olduğu halde fiyatlandırma statik → marj kaybı.\n\nYapay zeka sayesinde:\n1. Gümrük belgelerini şablondan otomatik oluştur (gümrük süresi 2-3 gün'e düş)\n2. Döviz hareketlerini otomatik takip → gerçek zaman fiyatlandırma (marj iyileşir)\n\nSonuç: teslim süresi 30% hızlanır, aylık marj 5-10% artar.\n\n45 dakikalık danışmada nasıl çalışacağını gösterelim. Çarşamba mı yoksa Perşembe mi uygun?\n\nSaygılarımla,\nUgur Üzel\nRavna — Şirketinizin yarı-zamanlı yapay zeka direktörü"
+    }
+  },
+  {
+    "name": "SİMTAŞ ÇELİK SANAYİ VE TİCARET ANONİM ŞİRKETİ",
+    "score": 8,
+    "status": "cold_ready",
+    "discard_reason": null,
+    "scoring_breakdown": {
+      "intent_match": {
+        "points": 2,
+        "evidence": "Maps category 'Demir Çelik Fabrikası' (steel mill/production facility)"
+      },
+      "turkey_confirmed": {
+        "points": 2,
+        "evidence": "Turkish company name, A.Ş. structure, Turkish phone +90 531, Kemalpaşa location"
+      },
+      "team_size": {
+        "points": 2,
+        "evidence": "Fabrika statüsü (not trading/services) → signals 20-35 person production operation"
+      },
+      "owner_operated": {
+        "points": 0,
+        "evidence": "A.Ş. (limited company) structure, no founder name, factory-scale operation suggests corporate structure"
+      },
+      "no_ai_usage": {
+        "points": 2,
+        "evidence": "No website, no digital tools. Factory operations typically manual in Turkish SMBs"
+      }
+    },
+    "ai_opportunities": [
+      {
+        "name": "Ham madde (cevher/dönek) tedarik ve üretim planı senkronizasyonu",
+        "process": "Ham madde alımı ve üretim planlama elle yapılıyor — bazen ham madde yok, bazen fazla depo kaybı yaşanıyor",
+        "hours_saved": "12-15 saat/hafta",
+        "reasoning": "Fabrikada aylık 100-200 ton hammadde işlenirse, her ton için iki kere kontrol (giriş + üretim) = 200+ kayıt. Just-in-time planning, AI tedarik + üretim eğrisi senkronize et → depo maliyeti 20% azalır."
+      },
+      {
+        "name": "Üretim hatası oranı izleme ve root cause analizi",
+        "process": "Hatalar (yüksek karbon/aşure vb.) bulunuyor, ama sebepi hiç loglanmıyor. Aynı hatalar tekrarlanıyor",
+        "hours_saved": "8-10 saat/hafta",
+        "reasoning": "Aylık 20-40 hata × tanı süresi = 40 saat. Hata türlerini, malzeme partisini, sıcaklığı logla → AI pattern bul → müdüre: 'Soğuk rulo kullandığında karbon yükseliyor' → kalite kontrol başarısı artar."
+      },
+      {
+        "name": "Müşteri siparişi kapasitesi planlaması ve teslim tarihi tahmini",
+        "process": "Müşteri sorguyor: 'Bu sipariş kaç günde hazır?' Fabrika müdürü tahmini cevap veriyor, çoğu zaman yanlış",
+        "hours_saved": "6-8 saat/hafta",
+        "reasoning": "Kapasitesi bilinen 5-7 üretim hattı × her hafta 30-50 sipariş = tahmin kesinliği düşük. Kapasite + siparişleri AI'ya ver → doğru teslim tarihi tahmini, müşteri memnuniyeti yükselir."
+      }
+    ],
+    "email_draft": {
+      "subject": "SİMTAŞ'ta üretim planını 20% optimize edin",
+      "body": "Sayın Yetkili,\n\nSİMTAŞ Çelik'in Kemalpaşa fabrikasında çelik üretimi yapıyorsunuz.\n\nÜretim planlama şu an manueldir: ham madde ne zaman gelsin, hangi hatta ne üretsin, kaç günde hazır olur — hesaplamalar kişiden kişiye değişiyor. Bu da depo maliyeti ve hata oranı yüksek oluyor. Ayrıca müşteri teslim tarihi tahmini sık yanlış.\n\nYapay zeka sayesinde:\n1. Ham madde + üretim + kapasite senkronize → depo maliyeti 20% azalır\n2. Teslim tarihi tahmini otomatik → müşteri memnuniyeti artar\n3. Hata sebepler loglanır → kalite kontrol iyileşir\n\nSonuç: aylık 10-15 saatlik kayıp fırsat kurtarılır, marj yükselir.\n\n45 dakikalık danışmada detayları gösterelim. Çarşamba mı Perşembe mi?\n\nSaygılarımla,\nUgur Üzel\nRavna — Şirketinizin yarı-zamanlı yapay zeka direktörü"
+    }
+  }
+]

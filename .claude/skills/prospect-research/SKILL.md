@@ -10,6 +10,25 @@ description: >
   keyword queue has pending entries.
 ---
 
+## ⛔⛔⛔ DEDUP GUARD — READ BEFORE EXECUTING ANY STEP ⛔⛔⛔
+
+These 3 steps MUST be executed as **direct MCP tool calls — no Agent subagent wrapping**:
+
+| Step | Forbidden action |
+|------|-----------------|
+| STEP 0.9 | NEVER use Agent tool. Call `mcp__plugin_supabase_supabase__execute_sql` directly. |
+| STEP 1.5 Pass 1 | NEVER use Agent tool. Call `mcp__plugin_supabase_supabase__execute_sql` directly. |
+| STEP 3 | NEVER use Agent tool. Call `mcp__plugin_supabase_supabase__execute_sql` directly. |
+
+**Self-check:** Before running any of these steps — "Am I about to use the Agent tool?"
+If YES → STOP. You are violating this rule. Use `mcp__plugin_supabase_supabase__execute_sql` directly with `project_id: "zbzhyhpphsugepwcqmvg"`.
+
+**Mandatory logging:** After each ⛔ step, you MUST log the actual SQL result with row count and matched names. If you cannot produce the actual result, you did not run the step. Run it again.
+
+**Note:** STEP 1.5 Pass 2 (Haiku fuzzy) IS allowed as a subagent — only Pass 1 (SQL) is forbidden.
+
+---
+
 # Prospect Research Agent v3
 
 **Purpose:** Discover and qualify Turkish SMB prospects using structured Maps data + website research, score by evidence-based ICP fit, extract contact details, draft cold outreach emails, and stage them in the pipeline.
@@ -141,14 +160,21 @@ description: >
 
 ### SQL Query:
 
+**IMPORTANT:** The Supabase MCP `execute_sql` tool accepts a complete SQL string — substitute normalized values as SQL string literals, not `?` placeholders.
+
+**Before running the query, compute:**
+- `keyword_normalized`: `lower(translate(keyword, 'çşığüöÇŞİĞÜÖ', 'csiguoCsIGUO'))` then strip suffixes like ` ticareti`, ` satıcısı`, ` dağıtıcısı` (post-transliteration form)
+- `location_normalized`: `lower(translate(split_part(location, ',', 1), 'çşığüöÇŞİĞÜÖ', 'csiguoCsIGUO'))`
+
 ```sql
-SELECT results_count, last_searched_at FROM searches
-WHERE keyword_normalized = ? AND location_normalized = ?;
+SELECT id, results_count, last_searched_at FROM searches
+WHERE keyword_normalized = 'demir celik ticareti'
+  AND location_normalized = 'kemalpasa';
 ```
 
 **Logic:**
-1. After parsing input in STEP 0.5, normalize keyword + location
-2. Immediately check `searches` table using normalized values
+1. After parsing input in STEP 0.5, compute normalized values using the functions above
+2. Immediately check `searches` table using normalized values as SQL string literals
 3. If found:
    - Log: `"⏭️ Bu arama daha yapılmış: '{keyword}' + '{location}' ({results_count} sonuç, son arama: {last_searched_at})"`
    - Pre-warning: `"Bu aramadan N şirket DB'nize zaten eklendi. Outscraper maliyeti ~$0.X doğacak ve yeni sonuç gelme ihtimali düşük. [date]'den bu yana yeni listelemeler olmuş olabilir."`
@@ -910,10 +936,24 @@ Nedenler:
 **Task:** Record this search in the `searches` table for future dedup.
 
 **SQL (INSERT OR UPDATE):**
+
+**Before executing, compute normalized values using the same logic as STEP 0.9:**
+- `keyword_normalized`: `lower(translate(keyword, 'çşığüöÇŞİĞÜÖ', 'csiguoCsIGUO'))` then strip suffixes
+- `location_normalized`: `lower(translate(split_part(location, ',', 1), 'çşığüöÇŞİĞÜÖ', 'csiguoCsIGUO'))`
+
 ```sql
-INSERT INTO searches (keyword, location, count, results_count, last_searched_at)
-VALUES (?, ?, ?, ?, NOW())
-ON CONFLICT(keyword, location) DO UPDATE SET
+INSERT INTO searches (
+  keyword, location, keyword_normalized, location_normalized,
+  count, results_count, last_searched_at
+)
+VALUES (
+  'demir çelik ticareti', 'İzmir',
+  'demir celik ticareti', 'izmir',
+  5, 12, NOW()
+)
+ON CONFLICT (keyword_normalized, location_normalized) DO UPDATE SET
+  keyword = EXCLUDED.keyword,
+  location = EXCLUDED.location,
   count = EXCLUDED.count,
   results_count = EXCLUDED.results_count,
   last_searched_at = NOW();
@@ -922,17 +962,19 @@ ON CONFLICT(keyword, location) DO UPDATE SET
 **Where:**
 - `keyword` — from STEP 0.5 parsed input (e.g., "demir çelik ticareti")
 - `location` — from STEP 0.5 parsed input (e.g., "İzmir")
+- `keyword_normalized` — computed value (string literal, no placeholders)
+- `location_normalized` — computed value (string literal, no placeholders)
 - `count` — how many prospects were requested (e.g., 5)
 - `results_count` — how many actual results Outscraper returned (e.g., 12)
 
-**Why UPSERT?** If the same search is run again, we update the record with the new result count and timestamp. This lets users see "searched last on 2026-03-17" and "found 12 companies".
+**Why UPSERT?** If the same search is run again (even with variant spelling like "Kemalpasa" vs "Kemalpaşa"), the ON CONFLICT clause fires and updates the record. This prevents duplicate rows and lets users see "searched last on 2026-03-17" and "found 12 companies".
 
 **Example after run:**
 ```
 searches table:
-| keyword | location | count | results_count | last_searched_at |
-|---------|----------|-------|---------------|------------------|
-| demir çelik ticareti | İzmir | 5 | 12 | 2026-03-17 10:45:00 |
+| keyword | location | keyword_normalized | location_normalized | count | results_count | last_searched_at |
+|---------|----------|--------------------|--------------------|-------|---------------|------------------|
+| demir çelik ticareti | İzmir | demir celik ticareti | izmir | 5 | 12 | 2026-03-17 10:45:00 |
 ```
 
 **Timing:** Execute STEP 9.5 **after STEP 9** (Telegram notification), so the entire workflow is logged.
