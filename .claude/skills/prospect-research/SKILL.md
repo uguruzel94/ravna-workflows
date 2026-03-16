@@ -76,13 +76,15 @@ description: >
 ### Turkish examples:
 - `"bana İzmir'de demir çelik ticareti yapan 5 şirket bulabilir misin?"` → `{keyword: "demir çelik ticareti", location: "İzmir", count: 5}`
 - `"İstanbul'da muhasebe firması ara, 10 tane"` → `{keyword: "muhasebe firması", location: "İstanbul", count: 10}`
-- `"Bornova'da yazılım şirketi ara, 7 tane"` → `{keyword: "yazılım şirketi", location: "Bornova", count: 7}` (district supported)
+- `"Bornova'da yazılım şirketi ara, 7 tane"` → `{keyword: "yazılım şirketi", location: "Bornova", count: 7}` (district supported, unambiguous)
+- `"Göztepe'de tıbbi cihaz distributor ara"` → **AMBIGUOUS**: Ask "Göztepe hangi şehirde? İstanbul mı yoksa İzmir mi?" (wait for response, then parse with clarified city)
 - `"Ankara'da yazılım şirketi, ama küçük, 7 tane"` → `{keyword: "yazılım şirketi", location: "Ankara", count: 7, intent: "küçük şirket, yazılım"}`
 
 ### English examples:
 - `"Find me 5 steel trading companies in Izmir"` → `{keyword: "steel trading", location: "İzmir", count: 5}`
 - `"Search for accounting firms in Istanbul, 10 results"` → `{keyword: "accounting firm", location: "İstanbul", count: 10}`
-- `"Find 3 companies in Bornova"` → `{keyword: "companies", location: "Bornova", count: 3}` (district supported)
+- `"Find 3 companies in Bornova"` → `{keyword: "companies", location: "Bornova", count: 3}` (district supported, unambiguous)
+- `"Find companies in Göztepe"` → **AMBIGUOUS**: Ask "Which city is Göztepe in? Istanbul or Izmir?" (wait for response, then continue)
 
 **Parser logic:**
 1. Detect language (Turkish or English)
@@ -90,10 +92,34 @@ description: >
 3. Infer `intent` if user provides exclusions (e.g., "ama değil", "except", "no")
 4. If location is English name (e.g., "Izmir" or "Besiktas"), convert to Turkish ("İzmir", "Beşiktaş")
 5. Normalize district names (e.g., "bornova" → "Bornova", "besiktas" → "Beşiktaş")
-6. Output JSON matching INPUT SCHEMA with `location` field
-7. Set response language = detected language
+6. **AMBIGUOUS DISTRICT CHECK:**
+   - If location is a district (not a city) AND exists in multiple cities, STOP and ask for clarification
+   - **Ambiguous districts example list:**
+     - "Göztepe" → İstanbul & İzmir
+     - "Alsancak" → İzmir & other cities
+     - "Karşıyaka" → İzmir & Konya
+   - **Clarification prompt (Turkish):** "Göztepe hangi şehirde? İstanbul mı yoksa İzmir mi?"
+   - **Clarification prompt (English):** "Which city is Göztepe in? Istanbul or Izmir?"
+   - Wait for user response, re-parse location, continue
+7. Output JSON matching INPUT SCHEMA with `location` field (now unambiguous)
+8. Set response language = detected language
 
 **Continue all subsequent steps (1-9) in the detected language.**
+
+---
+
+### Ambiguous Districts Reference
+
+Turkish cities have districts with identical or similar names. Keep this reference handy:
+
+| District | Cities | Example |
+|----------|--------|---------|
+| Göztepe | İstanbul, İzmir | "Göztepe'de yazılım şirketi ara" → ask which Göztepe |
+| Alsancak | İzmir, and others | "Alsancak'da muhasebe ara" → clarify |
+| Karşıyaka | İzmir, Konya | "Karşıyaka'da distributor ara" → clarify |
+| Çeşme | İzmir (district) | Usually İzmir, but verify if ambiguity arises |
+
+If user says "I mean İzmir's Göztepe" → set `location: "Göztepe, İzmir"` for precision.
 
 ---
 
