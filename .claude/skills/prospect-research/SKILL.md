@@ -404,7 +404,10 @@ The IN list must be pre-normalized to ASCII using the same `translate()` mapping
 
 ### Pass 2 — Haiku Fuzzy Name Check (for edge cases)
 
-**When to use:** After Pass 1 SQL exact dedup, if remaining companies > 0.
+**When to use:** MANDATORY after Pass 1. Run whenever remaining_batch > 0.
+DO NOT skip even if only 1 company remains. SQL exact match misses partial
+names (e.g., "PARS Dış Ticaret" vs "PARS Dış Ticaret Demir Çelik"), so
+Haiku is the essential second guard.
 
 **Task:** Haiku subagent: Given incoming company names (from Outscraper) and existing company names from same city (from DB), identify probable duplicates that SQL missed.
 
@@ -425,10 +428,17 @@ Consider:
 - Variant capitalization of Turkish chars
 - Short forms: "A-B Ticaret" vs "A-B T."
 - Owner name additions: "Mefamed Ltd" vs "Mehmet's Mefamed"
+- Partial/truncated names: "PARS Dış Ticaret" vs "PARS Dış Ticaret Demir Çelik"
+  → YES if one is clearly a prefix of the other AND prefix ≥ 10 characters
 
 Return ONLY name pairs that are likely the same company, one per line:
   "Kanaat Demir" = "Kanatt Demir İzmir Şubesi"
   "Acme Celik Ltd." = "ACME CELİK"
+  "PARS Dış Ticaret" = "PARS Dış Ticaret Demir Çelik"
+  "Koray Çelik" = "Koray Çelik İnşaat"
+
+Non-matches (examples of what NOT to return):
+  "Demir" ≠ "Demir Makine Sanayi" (prefix too short, ambiguous)
 
 If no matches found, respond: "No matches"
 ```
