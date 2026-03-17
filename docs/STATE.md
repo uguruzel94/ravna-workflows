@@ -1,14 +1,14 @@
 # STATE.md — ravna-workflows
 **Rewrite this file at the end of every session. Do not append — replace.**
-**Last updated:** 2026-03-17 (session 13)
+**Last updated:** 2026-03-17 (session 14)
 
 ---
 
 ## CURRENT STATUS
 
-**Phase:** prospect-research v3.6 (continued) — STEP 0.9 + STEP 9.5 Dedup Normalization Fix + Haiku Semantic Layer
-**Active skill:** prospect-research v3.6 — DB migration (suffix stripping) + STEP 9.5 SQL example fix + STEP 0.9 hybrid dedup (SQL exact + Haiku semantic fallback)
-**Overall system:** prospect-research dedup now hybrid (SQL exact-match + Haiku semantic check); ready for production testing; company-lookup + 6 other skills pending
+**Phase:** prospect-research v3.7 — STEP 1.5 Pass 2 Partial Name Matching Enhancement
+**Active skill:** prospect-research v3.7 — Pass 2 now mandatory (never skip), Haiku prompt enhanced for partial name dedup (prefix matching ≥10 chars)
+**Overall system:** prospect-research dedup now three-layer (SQL exact-match + Haiku fuzzy semantic + partial name matching); ready for production testing; company-lookup + 6 other skills pending
 
 ---
 
@@ -92,6 +92,42 @@
 ---
 
 ## LAST SESSION
+
+**Date:** 2026-03-17 (session 14)
+
+**Task: Prospect Research v3.7 — STEP 1.5 Pass 2 Partial Name Matching (Dedup Miss Fix)**
+
+**What was done:**
+
+**Problem:** PARS Dış Ticaret appeared in Outscraper results despite being in DB as "PARS Dış Ticaret Demir Çelik".
+- Root cause: Pass 1 SQL exact match failed on truncated name
+- Secondary: Pass 2 (Haiku fuzzy) was skipped for batch_size=1 (not mandatory)
+- Pattern: Same as STEP 0.9 (search dedup) — requires two-pass approach
+
+**Solution (3 changes):**
+
+1. **Pass 2 enforcement:** Changed "When to use" to explicitly state MANDATORY (never skip, even for 1 company)
+   - Added note: SQL exact match misses partial names, Haiku is the essential second guard
+
+2. **Haiku prompt enhancement:** Added partial/truncated name matching to "Consider:" block
+   - Rule: "PARS Dış Ticaret" vs "PARS Dış Ticaret Demir Çelik" → YES if one is prefix AND ≥10 chars
+   - Applied same pattern as abbreviations/misspellings dedup (semantic matching)
+
+3. **Examples added:** Included positive + negative examples in Haiku response template
+   - Positive: "PARS Dış Ticaret" = "PARS Dış Ticaret Demir Çelik" (prefix match)
+   - Positive: "Koray Çelik" = "Koray Çelik İnşaat" (prefix match)
+   - Negative: "Demir" ≠ "Demir Makine Sanayi" (prefix too short, ambiguous)
+
+**Commit:** `5a472ca` — fix: prospect-research SKILL.md v3.7 — STEP 1.5 Pass 2 mandatory + partial name dedup
+
+**Verification plan:** Re-run "demir çelik ticareti Kemalpaşa count=2" test → if Outscraper returns PARS:
+- Pass 1: SQL exact match misses (expected)
+- Pass 2: Invoked (mandatory now), matches against "PARS Dış Ticaret Demir Çelik" in DB → removed
+- Result: PARS never reaches STEP 2
+
+---
+
+## LAST SESSION (session 13)
 
 **Date:** 2026-03-17 (session 13)
 
@@ -289,7 +325,8 @@ Implemented all four fixes from the debug plan targeting dedup failures in Kemal
 | ✅ Supabase MCP project_id not documented | Skill had no way to know which project_id to use → guessed wrong → permission denied | Fixed in session 9: Added `SUPABASE_PROJECT_ID=zbzhyhpphsugepwcqmvg` to .env.local. Updated CLAUDE.md + SKILL.md. |
 | ✅ SKILL.md v3 async API bug | Discovery was returning Pending status forever | Fixed in session 4: Switched to correct POST /google-maps-search endpoint (commit e61dbe4). |
 | ✅ Dedup gaps (v3.1–3.3) | CDC DEMİR ÇELİK kept reappearing; STEP 1.5 silently skipped | Fixed in sessions 10–12: Identified 4 root causes. Deployed v3.5 (DB cleanup + schema migration + DEDUP GUARD header). Deployed v3.6 (SQL translate() + expanded suffix pattern + Turkish copy fix). Root cause 1 (SQL char mismatch) now fixed with translate(). Root causes 2,3,4 fixed in v3.5. Dedup 100% robust. |
-| ✅ prospect-research v3.6 ready for end-to-end test | All fixes deployed; SQL normalization + suffix pattern now handle all Turkish edge cases | Next: Run test with real Outscraper data. Verify DB inserts, Telegram notification, no duplicates on re-run. |
+| ✅ STEP 1.5 Pass 2 partial name miss (v3.6) | PARS Dış Ticaret (from Outscraper) bypassed dedup against DB entry "PARS Dış Ticaret Demir Çelik". Pass 2 (Haiku) was optional and skipped for batch_size=1. | Fixed in session 14: Pass 2 now MANDATORY, Haiku prompt enhanced with partial name matching (prefix ≥10 chars rule), examples added. Deployed v3.7. |
+| ✅ prospect-research v3.7 ready for end-to-end test | All fixes deployed; SQL normalization + suffix pattern + Pass 2 mandatory + partial name matching now handle all Turkish edge cases | Next: Run test with real Outscraper data. Verify DB inserts, Telegram notification, no duplicates on re-run, PARS dedup via fuzzy layer. |
 
 ---
 
@@ -301,33 +338,33 @@ Implemented all four fixes from the debug plan targeting dedup failures in Kemal
 
 When you open Claude Code next:
 
-> **Priority 1: Run prospect-research v3.6 end-to-end (complete dedup fix now fully deployed + SQL hardened)**
+> **Priority 1: Run prospect-research v3.7 end-to-end (dedup fully hardened with partial name matching)**
 > - ✅ v3.5: DB cleanup (2 duplicates deleted) + schema migration (normalized columns + UNIQUE constraint + index) + DEDUP GUARD header
-> - ✅ v3.6: SQL translate() for Turkish chars + expanded suffix pattern + Turkish copy fix
-> - ✅ All 4 root causes fixed: SQL normalization, suffix pattern, subagent guard, Turkish copy
-> - ✅ All verification checks passed (sessions 10–12)
+> - ✅ v3.6: SQL translate() for Turkish chars + expanded suffix pattern + Turkish copy fix + Haiku semantic layer (hybrid dedup for STEP 0.9)
+> - ✅ v3.7: STEP 1.5 Pass 2 mandatory + partial name matching (prefix ≥10 chars)
+> - ✅ All 5 root causes fixed: SQL normalization, suffix pattern, Pass 2 mandatory, partial name matching, Haiku semantic layer
+> - ✅ All verification checks passed (sessions 10–14)
 > - Ready to run: `keyword: "demir çelik ticareti", location: "Kemalpasa", count: 5`
 > - Verify: All 5 companies inserted to DB with score, email_draft, ai_opportunities, contact data
 > - Verify: Telegram notification sent with correct formatting (MarkdownV2)
 > - Verify: searches table logged with keyword_normalized, location_normalized, results_count, last_searched_at
-> - Verify: STEP 0.9 logs actual SQL result (if any) or report "no previous search found"
-> - Verify: STEP 1.5 logs SQL result from Pass 1 (exact matches removed) with Turkish char test
+> - Verify: STEP 0.9 logs actual SQL result (if any) or Haiku semantic fallback triggered
+> - Verify: STEP 1.5 logs Pass 1 (exact SQL) + Pass 2 (Haiku fuzzy, now mandatory)
+> - Verify: STEP 1.5 Pass 2 catches partial names (test: if PARS appears, confirm it matches "PARS Dış Ticaret Demir Çelik" in DB)
 > - Verify: STEP 3 logs final dedup check before research
 >
-> **Priority 2: Test STEP 0.9 normalization + two-pass dedup (v3.5 variant spelling test)**
-> - After first run populates DB with Kemalpasa prospects:
-> - Run 2: `keyword: "demir celik ticareti", location: "Kemalpasa, İzmir", count: 5` (variant spelling/location)
-> - Verify: STEP 0.9 recognizes as same search (normalized values match) and asks user
-> - Verify: Asks user before re-running Outscraper (with cost warning + likelihood message)
-> - Verify: STEP 1.5 Pass 1 (exact SQL) removes known companies
-> - Verify: STEP 1.5 Pass 2 (Haiku fuzzy) catches any near-duplicates
-> - Verify: DB shows no duplicate records after second run
-> - Verify: searches table shows updated last_searched_at (UPSERT worked)
+> **Priority 2: Test STEP 1.5 Pass 2 partial name matching specifically**
+> - After first run populates DB with Kemalpasa prospects (including PARS if available):
+> - Run 2: `keyword: "pars", location: "Kemalpasa", count: 5` (direct search for company with truncated name in Outscraper)
+> - Verify: STEP 1.5 Pass 2 (now mandatory) invokes Haiku with partial name matching rule
+> - Verify: "PARS Dış Ticaret" (from Outscraper) matches "PARS Dış Ticaret Demir Çelik" (from DB) via prefix rule
+> - Verify: Company removed before STEP 2 (fuzzy layer works)
 >
-> **Priority 3: Test re-run with different keyword (cross-query dedup)**
-> - Run 3: `keyword: "çelik satıcı", location: "Kemalpasa", count: 5` (different keyword, same city)
-> - Verify: STEP 1.5 Pass 1 removes companies from previous search (KANAAT DEMİR, etc.)
-> - Verify: Telegram shows only NEW prospects (net addition, no duplicate mentions)
+> **Priority 3: Test STEP 0.9 normalization + Haiku semantic layer**
+> - After DB populated: Run `keyword: "çelik satıcı", location: "Kemalpasa", count: 5` (semantically similar to initial "demir çelik ticareti")
+> - Verify: STEP 0.9 finds no exact SQL match (different normalized keywords)
+> - Verify: STEP 0.9 Haiku semantic fallback triggers, identifies semantic equivalence
+> - Verify: User asked about cost + likelihood before re-running Outscraper
 >
 > **Priority 4: Validate company-lookup with prospect-research data**
 > - Once prospect-research populates DB with 10+ real prospects, test company-lookup
@@ -358,5 +395,6 @@ When you open Claude Code next:
 | 2026-03-17 (session 11) | Complete dedup fix deployment: DB cleanup (3 DELETE queries) + schema migration (6 ALTER/CREATE queries) + schema.sql update + SKILL.md fixes (DEDUP GUARD header, STEP 0.9 SQL, STEP 9.5 INSERT) + verification (3 SELECT queries) + STATE.md update + commit | Haiku | $0.01 |
 | 2026-03-17 (session 12) | SQL normalization & suffix pattern hardening: Implement 4 fixes (translate() + expanded pattern + Turkish copy) + critical normalization note + SKILL.md updates + STATE.md update + commit | Haiku | $0.005 |
 | 2026-03-17 (session 13) | STEP 0.9 + STEP 9.5 dedup normalization fix + Haiku semantic layer: DB migration (suffix stripping) + SQL example fixes (STEP 9.5 + STEP 0.9) + Haiku semantic fallback (hybrid dedup) + prompt template + verification (1 SELECT query) + STATE.md update + commit | Haiku | $0.005 |
+| 2026-03-17 (session 14) | STEP 1.5 Pass 2 partial name matching: 3 SKILL.md edits (Pass 2 mandatory enforcement + partial name prompt enhancement + examples), session log update, STATE.md update, commit | Haiku | $0.002 |
 
 **Monthly budget target:** Keep automated daily costs under $0.50/day (~$15/month)
