@@ -126,7 +126,20 @@ If YES → STOP. You are violating this rule. Use `mcp__plugin_supabase_supabase
 7. Output JSON matching INPUT SCHEMA with `location` field (now unambiguous)
 8. Set response language = detected language
 
-**Continue all subsequent steps (1-9) in the detected language.**
+⛔ **MANDATORY LANGUAGE RULE: ALL SUBSEQUENT COMMUNICATION IN DETECTED LANGUAGE**
+
+If `detected_language = 'tr'` (user spoke Turkish):
+- **ALL status messages, logs, explanations, and responses in steps 1-9 MUST be in Turkish**
+- NO English responses allowed, even for technical logs
+- Messages like "Found 5 companies" → "5 şirket bulundu"
+- Error messages like "URL error" → "URL hatası"
+- All Telegram notifications in Turkish
+- All email drafts in Turkish (already mandated elsewhere, but emphasize)
+
+If `detected_language = 'en'` (user spoke English):
+- Respond in English for all steps 1-9
+
+**This rule is NOT optional.** Language is set once at STEP 0.5 and locked in for the entire execution.
 
 ---
 
@@ -352,12 +365,46 @@ done
 
 ### Pass 1 — Exact SQL Dedup (Direct Supabase MCP Call)
 
+⛔ **CRITICAL SQL RULE: `translate()` IS MANDATORY FOR TURKISH CHARACTER MATCHING**
+
+PostgreSQL's `LOWER('İ')` returns `'i̇'` (i + combining dot above, 2 bytes), NOT `'i'`.
+If you use `LOWER()` alone to normalize the DB column, the IN list will contain ASCII normalized values (`'i'`, 1 byte),
+and the comparison will **always fail** on Turkish names with `İ/ı`.
+
+**Result:** CDC DEMİR ÇELİK, PARS Dış Ticaret, and similar companies will NOT be found in the DB and will be processed again.
+
+**Fix:** Both sides of the SQL comparison MUST use `translate()` to convert Turkish chars to ASCII **before** the IN list comparison:
+- DB side: `LOWER(translate(..., 'çşığüöÇŞİĞÜÖ', 'csiguoCsIGUO'))`
+- IN list side: Pre-normalize each incoming name using the same mapping BEFORE adding to SQL
+
+**Example (CORRECT):**
+```
+incoming name: "CDC DEMİR ÇELİK"
+→ apply: lower(translate("CDC DEMİR ÇELİK", 'çşığüöÇŞİĞÜÖ', 'csiguoCsIGUO'))
+→ result: "cdc demir celik"  (all ASCII, no Turkish chars)
+→ add to IN list: ('cdc demir celik', ...)
+→ SQL will find DB row where LOWER(translate(...)) = 'cdc demir celik' ✓
+```
+
+**Example (WRONG — will break dedup):**
+```
+incoming name: "CDC DEMİR ÇELİK"
+→ skip translate, just use name as-is: "CDC DEMİR ÇELİK"
+→ add to IN list: ('CDC DEMİR ÇELİK', ...)
+→ SQL compares: LOWER(translate(db_name, ...)) = 'CDC DEMİR ÇELİK' (mixed normalization!)
+→ LOWER(translate('CDC DEMİR ÇELİK', ...)) produces 'cdc demir celik' (ASCII)
+→ 'cdc demir celik' ≠ 'CDC DEMİR ÇELİK' → NO MATCH ✗ (company duplicated!)
+```
+
+---
+
 **Name and URL Normalization:**
 
 **Name normalization:**
 1. Lowercase: `"CDC DEMİR ÇELİK"` → `"cdc demir çelik"`
-2. Strip common suffixes: `Ltd.`, `Şti.`, `A.Ş.`, `LTD.ŞTİ.`, `SAN VE TİC`, `ŞUBE`
-3. Strip extra whitespace
+2. **Apply `translate()` to convert Turkish chars to ASCII:** `LOWER(translate(..., 'çşığüöÇŞİĞÜÖ', 'csiguoCsIGUO'))` → `"cdc demir celik"`
+3. Strip common suffixes: `Ltd.`, `Şti.`, `A.Ş.`, `LTD.ŞTİ.`, `SAN VE TİC`, `ŞUBE`
+4. Strip extra whitespace
 
 **URL normalization:**
 1. Strip protocol: `https://mefamed.com.tr` → `mefamed.com.tr`
@@ -585,8 +632,15 @@ ON CONFLICT(LOWER(REGEXP_REPLACE(REGEXP_REPLACE(name, '\s+(Ltd\.|Şti\.|A\.Ş\.|
 1. Lowercase
 2. Strip common suffixes: `Ltd.`, `Şti.`, `A.Ş.`, `LTD.ŞTİ.`, `SAN VE TİC`, `ŞUBE`
 3. Strip extra whitespace
+4. **Apply `translate()` for Turkish character matching** (see CRITICAL SQL RULE below)
 
-Example: `"CDC DEMİR ÇELİK"` → `"cdc demir çelik"`
+Example: `"CDC DEMİR ÇELİK"` → (after translate) → `"cdc demir celik"`
+
+⛔ **CRITICAL SQL RULE (same as STEP 1.5):**
+The IN list MUST be pre-normalized using the same `translate()` mapping as the SQL column:
+- Incoming name: `"CDC DEMİR ÇELİK"` → `lower(translate(..., 'çşığüöÇŞİĞÜÖ', 'csiguoCsIGUO'))` → `"cdc demir celik"`
+- Add to IN list: `('cdc demir celik', ...)`
+- SQL will then match: `LOWER(translate(db_name, ...)) IN ('cdc demir celik', ...)` ✓
 
 **SQL:**
 ```sql
