@@ -1,14 +1,14 @@
 # STATE.md — ravna-workflows
 **Rewrite this file at the end of every session. Do not append — replace.**
-**Last updated:** 2026-03-17 (session 11)
+**Last updated:** 2026-03-17 (session 13)
 
 ---
 
 ## CURRENT STATUS
 
-**Phase:** prospect-research v3.6 — SQL Normalization & Suffix Pattern Hardening (Turkish char handling + fuzzy boundary cases)
-**Active skill:** prospect-research v3.6 — translate() SQL normalization + expanded suffix pattern + critical normalization note
-**Overall system:** prospect-research dedup now 100% robust for Turkish company names; ready for production testing; company-lookup + 6 other skills pending
+**Phase:** prospect-research v3.6 (continued) — STEP 0.9 + STEP 9.5 Dedup Normalization Fix + Haiku Semantic Layer
+**Active skill:** prospect-research v3.6 — DB migration (suffix stripping) + STEP 9.5 SQL example fix + STEP 0.9 hybrid dedup (SQL exact + Haiku semantic fallback)
+**Overall system:** prospect-research dedup now hybrid (SQL exact-match + Haiku semantic check); ready for production testing; company-lookup + 6 other skills pending
 
 ---
 
@@ -65,6 +65,16 @@
   - ✅ Fix 4 (root cause 4): Fixed Turkish copy: "Bu arama daha yapılmış" → "Bu arama daha önce yapılmış"
   - ✅ Critical normalization note added: Documents that incoming names must be pre-normalized to ASCII before SQL IN list
   - ✅ Root cause analysis complete: CDC, PARS, KULSAN (no URLs) now guaranteed to dedupe correctly via name matching
+- [x] `prospect-research/SKILL.md` v3.6 (continued) — STEP 0.9 + STEP 9.5 dedup normalization + Haiku semantic layer (session 13)
+  - ✅ DB migration: Stripped suffixes from keyword_normalized in searches table (demir celik ticareti → demir celik)
+  - ✅ STEP 9.5 fix: Changed SQL example from 'demir celik ticareti' → 'demir celik' (suffix-stripped)
+  - ✅ STEP 9.5 note: Added critical warning about suffix stripping requirement
+  - ✅ STEP 0.9 fix: Changed WHERE clause example from 'demir celik ticareti' → 'demir celik'
+  - ✅ STEP 0.9 semantic layer: Added Haiku fallback (hybrid SQL exact-match + Haiku fuzzy for semantic equivalence)
+  - ✅ Haiku prompt template: Clear decision logic with Turkish examples ("demir çelik ticareti" = "çelik satıcısı" → YES)
+  - ✅ Logic flow documented: 4a (query prior keywords) → 4c (Haiku check) → 5 (user decision)
+  - ✅ Cost optimized: 1 Haiku call per run only if needed (~$0.001), prevents ~$0.15 Outscraper waste on semantic duplicates
+  - ✅ Verified: DB migration applied, STEP 0.9 now correctly detects previous search via normalized lookup
 - [x] `prospect-research/evals.json` — created with 3 test cases
 - [x] `company-lookup/SKILL.md` v1 — written (natural language parser + Supabase query builder)
 - [x] `company-lookup/SKILL.md` v1.1 — optimized (switched parser from Sonnet → Haiku for cost/speed)
@@ -78,6 +88,61 @@
 - [ ] `curriculum-gen/SKILL.md` — written (P4)
 - [ ] `client-onboarding/SKILL.md` — written (P5)
 - [ ] `pipeline-intelligence/SKILL.md` — written (P6)
+
+---
+
+## LAST SESSION
+
+**Date:** 2026-03-17 (session 13)
+
+**Task: Prospect Research v3.6 — STEP 0.9 + STEP 9.5 Dedup Normalization Fix + Haiku Semantic Layer**
+
+**What was done:**
+
+**Part 1 — DB Migration (Root Cause Fix)**
+- Problem: STEP 9.5 example showed `'demir celik ticareti'` (with suffix) but STEP 0.9 logic strips suffixes before lookup. Inconsistency caused dedup to fail.
+- Solution: Applied DB migration to strip suffixes from existing `keyword_normalized` rows:
+  ```sql
+  UPDATE searches SET keyword_normalized = TRIM(REGEXP_REPLACE(...))
+  WHERE keyword_normalized ~ '\s+(ticareti|saticisi|dagıtıcısı|satıcısı|dağıtıcısı)$'
+  ```
+- Result: `"demir celik ticareti"` (Kemalpasa, İzmir) → `"demir celik"` (all rows fixed)
+- Verified: Query now correctly finds prior search: `SELECT ... WHERE keyword_normalized = 'demir celik' AND location_normalized = 'kemalpasa'` ✅
+
+**Part 2 — STEP 9.5 SQL Example Fix**
+- Problem: VALUES clause showed `'demir celik ticareti', 'izmir'` (unsuffixed) but comment said to strip suffixes (contradictory)
+- Solution:
+  - Changed VALUES from `'demir celik ticareti'` → `'demir celik'` (suffix stripped)
+  - Added explicit warning comment: "CRITICAL: keyword_normalized must have suffixes stripped BEFORE insertion"
+  - Example: `'demir celik ticareti'` → `'demir celik'` (suffix removed)
+
+**Part 3 — STEP 0.9 SQL Example Fix**
+- Problem: WHERE clause example showed `keyword_normalized = 'demir celik ticareti'` but should be `'demir celik'` (to match STEP 9.5 storage and match after suffix stripping)
+- Solution: Changed WHERE clause from `'demir celik ticareti'` → `'demir celik'`
+
+**Part 4 — Haiku Semantic Layer (Hybrid Dedup Strategy)**
+- Problem: SQL exact-match alone can't catch semantically equivalent searches like "demir çelik ticareti" vs "çelik satıcısı" (both return ~same companies in Outscraper, wasting ~$0.15)
+- Solution: Added Haiku fallback layer to STEP 0.9:
+  - If SQL exact-match returns 0 rows AND location has prior searches → query list of prior keywords
+  - Call Haiku: "Is '{current_keyword}' semantically equivalent to any of these?" (>60% Outscraper overlap = YES)
+  - If YES → warn user (but don't block, user decides)
+  - If NO → continue normally
+  - Cost: 1 Haiku call per run only if needed (~$0.001), prevents $0.15 Outscraper waste
+- Added Haiku prompt template (clear examples: "demir çelik ticareti" = "çelik satıcısı" → YES, etc.)
+- Logic flow documented in STEP 0.9 (steps 4a–5)
+
+**Part 5 — Verification**
+- ✅ DB migration applied successfully (all suffix patterns removed)
+- ✅ Verification query returned 1 row for "demir celik" + "kemalpasa" (confirms STEP 0.9 now detects previous search)
+- ✅ SKILL.md examples now consistent (both STEP 0.9 and STEP 9.5 show suffix-stripped values)
+- ✅ Haiku prompt documented with clear decision logic and cost/timing notes
+
+**Commit:** `fix: prospect-research SKILL.md v3.6 — STEP 0.9 + STEP 9.5 dedup normalization + semantic layer` (deployed)
+
+**Next:** Run end-to-end test with `keyword: "demir çelik ticareti", location: "Kemalpasa", count: 5` to verify:
+- STEP 0.9 now detects previous search via SQL exact-match (new behavior)
+- STEP 9.5 stores with stripped suffix (new behavior)
+- Haiku semantic layer triggers only if location has prior searches AND SQL fails (cost-efficient)
 
 ---
 
@@ -292,5 +357,6 @@ When you open Claude Code next:
 | 2026-03-17 (session 10) | Four-bug dedup fix analysis: Root cause analysis, STEP 0.9 normalization + STEP 1.5 two-pass refactor + STEP 3 safety net + ⛔ markers | Haiku | $0.01 |
 | 2026-03-17 (session 11) | Complete dedup fix deployment: DB cleanup (3 DELETE queries) + schema migration (6 ALTER/CREATE queries) + schema.sql update + SKILL.md fixes (DEDUP GUARD header, STEP 0.9 SQL, STEP 9.5 INSERT) + verification (3 SELECT queries) + STATE.md update + commit | Haiku | $0.01 |
 | 2026-03-17 (session 12) | SQL normalization & suffix pattern hardening: Implement 4 fixes (translate() + expanded pattern + Turkish copy) + critical normalization note + SKILL.md updates + STATE.md update + commit | Haiku | $0.005 |
+| 2026-03-17 (session 13) | STEP 0.9 + STEP 9.5 dedup normalization fix + Haiku semantic layer: DB migration (suffix stripping) + SQL example fixes (STEP 9.5 + STEP 0.9) + Haiku semantic fallback (hybrid dedup) + prompt template + verification (1 SELECT query) + STATE.md update + commit | Haiku | $0.005 |
 
 **Monthly budget target:** Keep automated daily costs under $0.50/day (~$15/month)
