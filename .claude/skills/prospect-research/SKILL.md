@@ -168,26 +168,64 @@ If YES → STOP. You are violating this rule. Use `mcp__plugin_supabase_supabase
 
 ```sql
 SELECT id, results_count, last_searched_at FROM searches
-WHERE keyword_normalized = 'demir celik ticareti'
+WHERE keyword_normalized = 'demir celik'
   AND location_normalized = 'kemalpasa';
 ```
 
 **Logic:**
 1. After parsing input in STEP 0.5, compute normalized values using the functions above
 2. Immediately check `searches` table using normalized values as SQL string literals
-3. If found:
+3. If found (SQL exact match):
    - Log: `"⏭️ Bu arama daha önce yapılmış: '{keyword}' + '{location}' ({results_count} sonuç, son arama: {last_searched_at})"`
    - Pre-warning: `"Bu aramadan N şirket DB'nize zaten eklendi. Outscraper maliyeti ~$0.X doğacak ve yeni sonuç gelme ihtimali düşük. [date]'den bu yana yeni listelemeler olmuş olabilir."`
    - Ask user: `"Yine de devam etmek ister misin?"`
    - If yes → continue to STEP 1
    - If no → abort gracefully
-4. If not found:
-   - Continue to STEP 1 normally
+4. If not found (SQL exact match failed):
+   a. Query: `SELECT DISTINCT keyword_normalized FROM searches WHERE location_normalized = '{location_normalized}' ORDER BY last_searched_at DESC LIMIT 20;`
+   b. If 0 prior searches for this location → continue to STEP 1 normally (skip Haiku)
+   c. If ≥1 prior searches for this location → **call Haiku semantic check** (see below)
+5. Haiku semantic dedup:
+   - **Prompt:** Use the template below
+   - **Result:** Haiku answers "YES: {matching_keyword}" or "NO"
+   - If YES → warn user: `"⚠️ Benzer bir arama daha önce yapılmış olabilir: '{prior_keyword}'. Yine de devam etmek ister misin?"` (similar to SQL warning, but for semantic match)
+     - If yes → continue to STEP 1
+     - If no → abort gracefully
+   - If NO → continue to STEP 1 normally
 
 **Why this matters:**
 - Outscraper costs ~$0.003/record. Re-searching the same area wastes money.
 - If you found "demir çelik ticareti İzmir" last week with 10 results, a search for "demir celik ticareti Izmir" (Turkish chars stripped) should be recognized as the same.
 - Normalization prevents duplicate Outscraper calls due to typos or Turkish character variants.
+- Even after normalization, semantic equivalence check catches cases like "demir çelik ticareti" vs "çelik satıcısı" (same industry, overlapping results) — two-pass dedup strategy.
+
+**Haiku Semantic Layer Prompt (for step 5c above):**
+
+```
+You are a search deduplication assistant for Turkish business prospect research.
+
+Current search keyword: "{current_keyword}"
+Current location: "{location}"
+Previous searches in the same location:
+{list of previous keywords, one per line}
+
+Task: Is the current keyword semantically equivalent to ANY previous keyword?
+"Semantically equivalent" means: if Outscraper were run with both keywords in the same city,
+they would return substantially the same companies (>60% overlap).
+
+Examples:
+- "demir çelik ticareti" = "çelik satıcısı" → YES (same industry)
+- "demir çelik ticareti" = "demir çelik distributor" → YES
+- "demir çelik ticareti" = "muhasebe firması" → NO (different industry)
+- "tıbbi cihaz" = "medikal ekipman dağıtım" → YES
+
+Answer format: "YES: {matching_keyword}" or "NO"
+```
+
+**Cost & timing:**
+- 1 Haiku call per run if location has prior searches (~$0.001)
+- Only triggered if SQL exact match fails AND prior searches exist in location
+- False positives are warnings, not blocks — user always decides
 
 **Output:**
 ```json
@@ -957,13 +995,17 @@ Nedenler:
 - `location_normalized`: `lower(translate(split_part(location, ',', 1), 'çşığüöÇŞİĞÜÖ', 'csiguoCsIGUO'))`
 
 ```sql
+-- CRITICAL: keyword_normalized must have suffixes stripped BEFORE insertion.
+-- Same logic as STEP 0.9: strip ' ticareti', ' saticisi', ' dagıtıcısı' AFTER transliteration.
+-- Example: 'demir celik ticareti' → 'demir celik' (suffix removed)
+
 INSERT INTO searches (
   keyword, location, keyword_normalized, location_normalized,
   count, results_count, last_searched_at
 )
 VALUES (
   'demir çelik ticareti', 'İzmir',
-  'demir celik ticareti', 'izmir',
+  'demir celik', 'izmir',
   5, 12, NOW()
 )
 ON CONFLICT (keyword_normalized, location_normalized) DO UPDATE SET
