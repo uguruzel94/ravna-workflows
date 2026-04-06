@@ -24,7 +24,7 @@ The scheduled task reads this file, picks the **first row with status `pending`*
 | # | Keyword | Location | Count | Status | Run Date | Notes |
 |---|---------|----------|-------|--------|----------|-------|
 | 1 | `tıbbi laboratuvar` | `Konak İzmir` | 25 | error | 2026-04-06 | Ağ proxy harici API erişimini engelliyor (Supabase, Outscraper, Telegram ulaşılamıyor) |
-| 2 | `tıbbi laboratuvar` | `Bornova İzmir` | 25 | pending | — | Ege University Hospital proximity = lab density |
+| 2 | `tıbbi laboratuvar` | `Bornova İzmir` | 25 | done | 2026-04-06 | 50 Outscraper → 5 cold_ready, 8 discarded, 34 pre_filter |
 | 3 | `tıbbi cihaz` | `Konak İzmir` | 25 | pending | — | Medical device distributors, highest SMB density |
 | 4 | `tıbbi cihaz` | `Alsancak İzmir` | 25 | pending | — | 88+ medical health companies confirmed here |
 | 5 | `genetik laboratuvar` | `İzmir` | 25 | pending | — | Genetic testing labs, city-level (low density, cast wide) |
@@ -47,6 +47,7 @@ The scheduled task reads this file, picks the **first row with status `pending`*
 | # | Keyword | Location | Run Date | Records Found | Cold-Ready | Notes |
 |---|---------|----------|----------|---------------|------------|-------|
 | 1 | `tıbbi laboratuvar` | `Konak İzmir` | 2026-04-06 | 0 | 0 | ERROR: Ağ proxy harici API erişimini engelliyor |
+| 2 | `tıbbi laboratuvar` | `Bornova İzmir` | 2026-04-06 | 50 | 5 | 50 Outscraper sonucu → 15 survived filter → 5 cold_ready (Üç Gen 9/10, Erbayraktar 9/10, İzmir Ege 7/10, Analiz 7/10, Yöntem 6/10) |
 
 ---
 
@@ -54,7 +55,7 @@ The scheduled task reads this file, picks the **first row with status `pending`*
 
 | Month | Runs | Records Used | Free Tier Remaining | Notes |
 |-------|------|-------------|---------------------|-------|
-| April 2026 | 1 | 0 | 500 | 1 run attempted, 0 records used (error — network blocked) |
+| April 2026 | 2 | 50 | 450 | Run 1: error (network). Run 2: success — 50 records used, 5 cold_ready |
 | May 2026 | 0 | 0 | 500 | — |
 
 ---
