@@ -23,7 +23,7 @@ The scheduled task reads this file, picks the **first row with status `pending`*
 
 | # | Keyword | Location | Count | Status | Run Date | Notes |
 |---|---------|----------|-------|--------|----------|-------|
-| 1 | `tıbbi laboratuvar` | `Konak İzmir` | 25 | pending | — | Lab cluster, primary commercial district |
+| 1 | `tıbbi laboratuvar` | `Konak İzmir` | 25 | error | 2026-04-06 | Ağ proxy harici API erişimini engelliyor (Supabase, Outscraper, Telegram ulaşılamıyor) |
 | 2 | `tıbbi laboratuvar` | `Bornova İzmir` | 25 | pending | — | Ege University Hospital proximity = lab density |
 | 3 | `tıbbi cihaz` | `Konak İzmir` | 25 | pending | — | Medical device distributors, highest SMB density |
 | 4 | `tıbbi cihaz` | `Alsancak İzmir` | 25 | pending | — | 88+ medical health companies confirmed here |
@@ -46,6 +46,7 @@ The scheduled task reads this file, picks the **first row with status `pending`*
 
 | # | Keyword | Location | Run Date | Records Found | Cold-Ready | Notes |
 |---|---------|----------|----------|---------------|------------|-------|
+| 1 | `tıbbi laboratuvar` | `Konak İzmir` | 2026-04-06 | 0 | 0 | ERROR: Ağ proxy harici API erişimini engelliyor |
 
 ---
 
@@ -53,7 +54,7 @@ The scheduled task reads this file, picks the **first row with status `pending`*
 
 | Month | Runs | Records Used | Free Tier Remaining | Notes |
 |-------|------|-------------|---------------------|-------|
-| April 2026 | 0 | 0 | 500 | Starting |
+| April 2026 | 1 | 0 | 500 | 1 run attempted, 0 records used (error — network blocked) |
 | May 2026 | 0 | 0 | 500 | — |
 
 ---
