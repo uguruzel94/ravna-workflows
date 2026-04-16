@@ -30,7 +30,7 @@ Your job:
 8. Commit the updated file:
    git add data/prospect-research-queue.md
    git commit -m "data: queue row [#] done — [keyword] [location]"
-   git push
+   git push origin HEAD:main
 
 CRITICAL RULES:
 - Read SKILL.md fully before executing. It has 13 steps with specific dedup, scoring, and database logic.
