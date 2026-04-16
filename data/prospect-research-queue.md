@@ -25,7 +25,7 @@ The scheduled task reads this file, picks the **first row with status `pending`*
 |---|---------|----------|-------|--------|----------|-------|
 | 1 | `tıbbi laboratuvar` | `Konak İzmir` | 25 | error | 2026-04-06 | Ağ proxy harici API erişimini engelliyor (Supabase, Outscraper, Telegram ulaşılamıyor) |
 | 2 | `tıbbi laboratuvar` | `Bornova İzmir` | 25 | done | 2026-04-06 | 50 Outscraper → 5 cold_ready, 8 discarded, 34 pre_filter |
-| 3 | `tıbbi cihaz` | `Konak İzmir` | 25 | done | 2026-04-10 | 50 Outscraper → 34 potential cold_ready, 16 pre_filter_discard |
+| 3 | `tıbbi cihaz` | `Konak İzmir` | 25 | done | 2026-04-10 | ⚠️ Duplicate run — 2026-04-07 run already found 25 of these. Dedup missed it: location_normalized inconsistency ("konak" vs "konak izmir"). Searches table + SKILL.md fixed. No new records inserted. |
 | 4 | `tıbbi cihaz` | `Alsancak İzmir` | 25 | pending | — | 88+ medical health companies confirmed here |
 | 5 | `genetik laboratuvar` | `İzmir` | 25 | pending | — | Genetic testing labs, city-level (low density, cast wide) |
 | 6 | `klinik laboratuvar` | `Bayraklı İzmir` | 25 | pending | — | Emerging CBD, 21+ medical companies confirmed |
@@ -48,7 +48,7 @@ The scheduled task reads this file, picks the **first row with status `pending`*
 |---|---------|----------|----------|---------------|------------|-------|
 | 1 | `tıbbi laboratuvar` | `Konak İzmir` | 2026-04-06 | 0 | 0 | ERROR: Ağ proxy harici API erişimini engelliyor |
 | 2 | `tıbbi laboratuvar` | `Bornova İzmir` | 2026-04-06 | 50 | 5 | 50 Outscraper sonucu → 15 survived filter → 5 cold_ready (Üç Gen 9/10, Erbayraktar 9/10, İzmir Ege 7/10, Analiz 7/10, Yöntem 6/10) |
-| 3 | `tıbbi cihaz` | `Konak İzmir` | 2026-04-10 | 50 | 34 | 50 Outscraper → 34 potential (research_pending), 16 discarded (no website) |
+| 3 | `tıbbi cihaz` | `Konak İzmir` | 2026-04-10 | 50 | 0 | ⚠️ Duplicate — DB already had 25 from prior 2026-04-07 run. Dedup missed due to location_normalized mismatch. 50 Outscraper credits wasted. Fixed. |
 
 ---
 
@@ -56,7 +56,7 @@ The scheduled task reads this file, picks the **first row with status `pending`*
 
 | Month | Runs | Records Used | Free Tier Remaining | Notes |
 |-------|------|-------------|---------------------|-------|
-| April 2026 | 3 | 100 | 400 | Run 1: error (network). Run 2: success (50 records, 5 cold_ready). Run 3: success (50 records, 34 research_pending) |
+| April 2026 | 3 | 100 | 400 | Run 1: error (network). Run 2: success (50 records, 5 cold_ready). Run 3: ⚠️ duplicate search (50 credits wasted, no new records) |
 | May 2026 | 0 | 0 | 500 | — |
 
 ---
