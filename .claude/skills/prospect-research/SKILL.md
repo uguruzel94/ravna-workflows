@@ -177,7 +177,19 @@ If `detected_language = 'en'` (user spoke English):
 
 **Before running the query, compute:**
 - `keyword_normalized`: `lower(translate(keyword, 'çşığüöÇŞİĞÜÖ', 'csiguoCsIGUO'))` then strip suffixes like ` ticareti`, ` satıcısı`, ` dağıtıcısı` (post-transliteration form)
-- `location_normalized`: `lower(translate(split_part(location, ',', 1), 'çşığüöÇŞİĞÜÖ', 'csiguoCsIGUO'))`
+- `location_normalized`: normalize Turkish chars, then strip trailing city name (both space and comma formats):
+  ```python
+  CITY_SUFFIXES = [' izmir', ' istanbul', ' ankara', ' konya', ' bursa', ' adana', ' eskisehir', ' burdur']
+  text = normalize_turkish(location).strip()        # "konak izmir"
+  text = text.split(',')[0].strip()                 # handle "Konak, İzmir" → "konak"
+  for suffix in CITY_SUFFIXES:
+      if text.endswith(suffix):
+          text = text[:-len(suffix)].strip()        # "konak izmir" → "konak"
+  location_normalized = text
+  ```
+  Examples: `"Konak İzmir"` → `"konak"` | `"Bornova İzmir"` → `"bornova"` | `"Konak, İzmir"` → `"konak"` | `"İzmir"` → `"izmir"`
+
+  ⚠️ **BUG FIXED 2026-04-10:** Prior runs used `split_part(location, ',', 1)` only — this produced `"konak izmir"` for space-separated inputs vs `"konak"` for comma-separated ones, causing dedup misses and duplicate Outscraper calls. The rule above handles both formats consistently.
 
 ```sql
 SELECT id, results_count, last_searched_at FROM searches
@@ -1056,7 +1068,7 @@ Nedenler:
 
 **Before executing, compute normalized values using the same logic as STEP 0.9:**
 - `keyword_normalized`: `lower(translate(keyword, 'çşığüöÇŞİĞÜÖ', 'csiguoCsIGUO'))` then strip suffixes
-- `location_normalized`: `lower(translate(split_part(location, ',', 1), 'çşığüöÇŞİĞÜÖ', 'csiguoCsIGUO'))`
+- `location_normalized`: same as STEP 0.9 — strip trailing city name (space OR comma format), always returns district only. `"Konak İzmir"` → `"konak"`, `"Bornova İzmir"` → `"bornova"`
 
 ```sql
 -- CRITICAL: keyword_normalized must have suffixes stripped BEFORE insertion.
