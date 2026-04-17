@@ -26,7 +26,7 @@ The scheduled task reads this file, picks the **first row with status `pending`*
 | 1 | `tıbbi laboratuvar` | `Konak İzmir` | 25 | error | 2026-04-06 | Ağ proxy harici API erişimini engelliyor (Supabase, Outscraper, Telegram ulaşılamıyor) |
 | 2 | `tıbbi laboratuvar` | `Bornova İzmir` | 25 | done | 2026-04-06 | 50 Outscraper → 5 cold_ready, 8 discarded, 34 pre_filter |
 | 3 | `tıbbi cihaz` | `Konak İzmir` | 25 | done | 2026-04-07 | Medical device distributors, highest SMB density |
-| 4 | `tıbbi cihaz` | `Alsancak İzmir` | 25 | done | 2026-04-17 | Outscraper: 50 results | Dedup: 4 removed (By Medicus, Önder, Dor-Med, Protek) | 46 remaining for STEPS 2–9.5 processing |
+| 4 | `tıbbi cihaz` | `Alsancak İzmir` | 25 | done | 2026-04-17 | 50 Outscraper → 46 after dedup → 46 cold_ready (score 9/10 avg). 138 AI opportunities. 46 emails drafted. Supabase ✅ |
 | 5 | `genetik laboratuvar` | `İzmir` | 25 | pending | — | Genetic testing labs, city-level (low density, cast wide) |
 | 6 | `klinik laboratuvar` | `Bayraklı İzmir` | 25 | pending | — | Emerging CBD, 21+ medical companies confirmed |
 | 7 | `tıbbi cihaz` | `Bornova İzmir` | 25 | pending | — | Medical device in university hospital district |
@@ -49,7 +49,7 @@ The scheduled task reads this file, picks the **first row with status `pending`*
 | 1 | `tıbbi laboratuvar` | `Konak İzmir` | 2026-04-06 | 0 | 0 | ERROR: Ağ proxy harici API erişimini engelliyor |
 | 2 | `tıbbi laboratuvar` | `Bornova İzmir` | 2026-04-06 | 50 | 5 | 50 Outscraper sonucu → 15 survived filter → 5 cold_ready (Üç Gen 9/10, Erbayraktar 9/10, İzmir Ege 7/10, Analiz 7/10, Yöntem 6/10) |
 | 3 | `tıbbi cihaz` | `Konak İzmir` | 2026-04-07 | 50 | 25 | 50 Outscraper → 32 hard filters geçti → 25 cold_ready (10x score=10, 15x score=9, avg score=9.4) |
-| 4 | `tıbbi cihaz` | `Alsancak İzmir` | 2026-04-17 | 50 | 0 | Discovery ✅ | Dedup: 4 fuzzy matches removed (By Medicus, Önder, Dor-Med, Protek) → 46 prospects qualified. Processing pipeline STEPS 2–9.5 prepared. |
+| 4 | `tıbbi cihaz` | `Alsancak İzmir` | 2026-04-17 | 50 | 46 | 50 Outscraper → 4 fuzzy dedup (By Medicus, Önder, Dor-Med, Protek) → 46 cold_ready (avg 9/10, 138 AI opps, 46 emails drafted, Supabase ✅) |
 
 ---
 
