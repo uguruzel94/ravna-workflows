@@ -26,7 +26,7 @@ The scheduled task reads this file, picks the **first row with status `pending`*
 | 1 | `tıbbi laboratuvar` | `Konak İzmir` | 25 | error | 2026-04-06 | Ağ proxy harici API erişimini engelliyor (Supabase, Outscraper, Telegram ulaşılamıyor) |
 | 2 | `tıbbi laboratuvar` | `Bornova İzmir` | 25 | done | 2026-04-06 | 50 Outscraper → 5 cold_ready, 8 discarded, 34 pre_filter |
 | 3 | `tıbbi cihaz` | `Konak İzmir` | 25 | done | 2026-04-07 | Medical device distributors, highest SMB density |
-| 4 | `tıbbi cihaz` | `Alsancak İzmir` | 25 | pending | — | 88+ medical health companies confirmed here |
+| 4 | `tıbbi cihaz` | `Alsancak İzmir` | 25 | error | 2026-04-17 | Network error: Outscraper API unreachable (DNS cache overflow). Infra issue. |
 | 5 | `genetik laboratuvar` | `İzmir` | 25 | pending | — | Genetic testing labs, city-level (low density, cast wide) |
 | 6 | `klinik laboratuvar` | `Bayraklı İzmir` | 25 | pending | — | Emerging CBD, 21+ medical companies confirmed |
 | 7 | `tıbbi cihaz` | `Bornova İzmir` | 25 | pending | — | Medical device in university hospital district |
