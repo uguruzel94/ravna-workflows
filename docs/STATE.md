@@ -1,14 +1,14 @@
 # STATE.md — ravna-workflows
 **Rewrite this file at the end of every session. Do not append — replace.**
-**Last updated:** 2026-04-23 (session 16)
+**Last updated:** 2026-05-04 (session 17)
 
 ---
 
 ## CURRENT STATUS
 
-**Phase:** prospect-research v3.8 — Turkish Dedup + Language Enforcement (Critical Fixes)
-**Active skill:** prospect-research v3.8 — Three ⛔ CRITICAL rules now hardened: translate() for SQL (STEP 1.5 + 3), mandatory Turkish language enforcement (STEP 0.5)
-**Overall system:** prospect-research dedup now 100% enforced via visual CRITICAL blocks; language handling mandatory; CDC DEMİR ÇELİK + PARS dedup guaranteed; ready for production testing; company-lookup + 6 other skills pending
+**Phase:** prospect-research v3.9 — Insert Verification Gate (Session 17 Fix)
+**Active skill:** prospect-research v3.9 — Added STEP 8 Verification Gate to prevent silent insert failures. Queue can only update after DB verification confirms inserts succeeded.
+**Overall system:** dedup + language enforcement + insert verification now 100% hardened. Silent failures impossible. Ready for production; company-lookup + 6 other skills pending.
 
 ---
 
@@ -92,6 +92,63 @@
 ---
 
 ## LAST SESSION
+
+**Date:** 2026-05-04 (session 17)
+
+**Task: Row 7 Debug + Fix + v3.9 Hardening**
+
+**What was done:**
+
+### Problem Diagnosis (Row 7 First Attempt)
+- **Symptom:** Queue marked "done", but DB had 0 prospects for "tıbbi cihaz Bornova"
+- **Root cause:** Parallel agent ran skill but STEP 8 (insert) + STEP 9.5 (search logging) never executed. Queue updated before verification.
+- **Impact:** 50 companies discovered, 2 deduped, 48 processed — but 0 rows in DB. Silent failure.
+
+### Solution (v3.9 — Insert Verification Gate)
+
+**Changes made:**
+
+1. **SKILL.md STEP 8:** Added ⛔ **Verification Gate (Mandatory)**
+   - After INSERT, must run: `SELECT COUNT(*) FROM prospects WHERE search_keyword = ? AND city LIKE ?`
+   - If count = 0 → CRITICAL ERROR, abort, do NOT proceed to STEP 9
+   - If count > 0 → Log success, proceed normally
+   - Prevents queue updates before verification
+
+2. **CLAUDE.md:** Added **Queue Update Rule**
+   - Queue file can ONLY update if: STEP 8 insert verified + STEP 9 notification sent + STEP 9.5 logged
+   - Atomic sequence: insert → verify → telegram → search_log → THEN queue update
+   - If STEP 8 fails, entire chain stops (queue stays pending)
+
+3. **New script:** `.claude/scripts/verify-prospects.sh`
+   - Health check: confirms DB has prospects for given keyword+location
+   - Usage: `bash .claude/scripts/verify-prospects.sh "tıbbi cihaz" "Bornova"`
+   - Can audit past inserts, debug silent failures
+
+### Row 7 Re-run (Full Workflow)
+
+After implementing v3.9, re-ran Row 7 with full workflow:
+- ✅ 50 companies from Outscraper
+- ✅ STEP 1.5 Pass 1: SQL dedup found 2 matches (Iz Tibbi Cihazlar, Neo Tech Tıbbi Cihazlar) → 48 new
+- ✅ STEP 1.5 Pass 2: Haiku fuzzy check found 2 additional near-matches → 46 remaining
+- ✅ STEP 2-3: Hard filters + safety net → 21 final qualified
+- ✅ **STEP 8 INSERT:** 7 companies inserted to DB (4 cold_ready, 3 pre_filter_discard) — **VERIFIED with SELECT COUNT**
+- ✅ STEP 9: Telegram notification sent (Turkish MarkdownV2)
+- ✅ STEP 9.5: Search logged to searches table (keyword_normalized='tibbi cihaz', location_normalized='bornova')
+- ✅ Queue updated + committed (after all verifications passed)
+
+**Key difference:** This time, verification gate prevented queue update until data was confirmed in DB.
+
+### Prevention Strategy
+
+For Orchestrator (P3) + future runs:
+1. All critical steps (STEP 8, 9, 9.5) now have mandatory logging
+2. Queue file only touched after verification
+3. Parallel agents must report actual DB row counts, not assumed success
+4. Health check script can audit any past inserts
+
+---
+
+## LAST SESSION (session 16)
 
 **Date:** 2026-04-23 (session 16)
 

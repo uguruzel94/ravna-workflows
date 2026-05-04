@@ -981,6 +981,43 @@ Ravna — Şirketinizin yarı-zamanlı yapay zeka direktörü
    - If not exists: insert
 2. Return counts: N inserted, M skipped (already exist), K errors
 
+### ⛔ STEP 8 Verification Gate (MANDATORY — Session 2026-05-04 Fix)
+
+**CRITICAL:** After INSERT completes, MUST verify data landed in DB. Row 7 failure showed that commit can succeed with 0 rows inserted. This gate prevents that.
+
+**Verification SQL (REQUIRED):**
+
+```sql
+SELECT COUNT(*) as inserted_count 
+FROM prospects 
+WHERE search_keyword = '{search_keyword}' 
+  AND city LIKE '{location}%'
+  AND created_at > NOW() - INTERVAL '10 minutes';
+```
+
+**Decision tree:**
+- If `inserted_count = 0` → ❌ **CRITICAL ERROR.** Do NOT proceed to STEP 9. Log error: "STEP 8 FAILED: 0 rows inserted. Database insert did not execute or failed silently."
+- If `inserted_count > 0` AND `inserted_count >= expected_count * 0.8` → ✅ **SUCCESS.** Proceed to STEP 9. Log: "✅ {inserted_count} companies inserted to prospects table (search_keyword='{search_keyword}', location='{location}')"
+- If `0 < inserted_count < expected_count * 0.8` → ⚠️ **PARTIAL FAILURE.** Log warning but proceed to STEP 9 (data is partially safe). Log: "⚠️ PARTIAL: Expected ~{expected}, got {inserted_count}. Continue with reduced batch."
+
+**Failure response (if inserted_count = 0):**
+```
+❌ STEP 8 CRITICAL FAILURE
+
+Supabase insert did not execute or silently failed.
+inserted_count = 0, expected > {expected_count}
+
+Actions:
+1. Check .env.local: SUPABASE_PROJECT_ID, SUPABASE_KEY present?
+2. Check network: Can reach api.supabase.co?
+3. Check schema: prospects table exists with correct columns?
+4. DO NOT update queue file.
+5. DO NOT proceed to STEP 9.
+6. Re-run this search.
+
+Logged: {timestamp}, search_keyword='{search_keyword}', location='{location}'
+```
+
 ---
 
 ## STEP 9: Telegram Notification (Fixed with jq + MarkdownV2)

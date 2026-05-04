@@ -234,3 +234,26 @@ What it does:
 - The Telegram bot is the human-in-the-loop layer. Nothing emails a client without owner approval.
 - If a skill touches Resend (sends emails), always include an approval step via Telegram first.
 - Turkish prospect emails must be reviewed by Ugur before sending. Always.
+
+### Queue Update Rule (CRITICAL — Session 2026-05-04 Fix)
+
+**Problem:** Row 7 first attempt — queue updated + committed but 0 rows inserted to DB. Data verification skipped.
+
+**Rule:** Queue file can ONLY be marked `done` if ALL these pass:
+- [ ] STEP 8 Supabase insert completed
+- [ ] **STEP 8 Verification query** executed: `SELECT COUNT FROM prospects WHERE search_keyword = ? AND city LIKE ?%` returned N > 0
+- [ ] STEP 9 Telegram notification sent successfully
+- [ ] STEP 9.5 Search logged to `searches` table
+
+**Sequence (ATOMIC):**
+```
+1. Execute STEP 8 insert SQL
+2. Verify: SELECT COUNT(*) — if 0, ABORT here, do NOT proceed
+3. Execute STEP 9 Telegram notification
+4. Execute STEP 9.5 search logging
+5. ONLY NOW: Update queue file + commit
+```
+
+**If STEP 8 verification returns 0:** Abort immediately. Log error. Do NOT update queue. Return error to user. Queue row stays `pending`.
+
+**Why:** Silent insert failures can go unnoticed. Commit happens before data is verified. This locks the queue on failures.
