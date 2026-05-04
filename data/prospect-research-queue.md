@@ -1,5 +1,5 @@
 # Prospect Research Queue — İzmir
-**Last updated:** 2026-04-06
+**Last updated:** 2026-05-04
 **Scope:** İzmir only. Tuesdays and Fridays at 10:00 Turkey time.
 **Per run:** count=25 (Outscraper pulls up to 50 for buffer)
 **Free tier budget:** 500 records/month (~4 runs/month at 50 records each = ~200 records/month with this cadence)
@@ -30,7 +30,7 @@ The scheduled task reads this file, picks the **first row with status `pending`*
 | 5 | `genetik laboratuvar` | `İzmir` | 25 | done | 2026-04-21 | 10 Outscraper sonucu → 10 zaten DB'de (Özel GENTAN, İzmir Genetik, Mikrogen) → 0 yeni |
 | 6 | `klinik laboratuvar` | `Bayraklı İzmir` | 25 | done | 2026-05-01 | 1 Outscraper sonucu → 1 zaten DB'de (Talatpaşa Laboratuvarlar Grubu) → 0 yeni |
 | 7 | `tıbbi cihaz` | `Bornova İzmir` | 25 | done | 2026-05-04 | 50 Outscraper → 2 fuzzy dedup → 48 new → ~20-30 cold_ready (avg 9/10) |
-| 8 | `medikal cihaz` | `Konak İzmir` | 25 | pending | — | Keyword variant — surfaces different registered businesses |
+| 8 | `medikal cihaz` | `Konak İzmir` | 25 | done | 2026-05-04 | 50 Outscraper → 19 exact dedup → 31 new → 17 hard filter (website required) → 17 cold_ready (avg 8.3/10) |
 | 9 | `medikal cihaz` | `Alsancak İzmir` | 25 | pending | — | Variant in port-facing trade district |
 | 10 | `analiz laboratuvarı` | `İzmir` | 25 | pending | — | Broader lab keyword, city-level sweep |
 | 11 | `tıbbi cihaz` | `Bayraklı İzmir` | 25 | pending | — | Medical device in emerging CBD |
@@ -53,6 +53,7 @@ The scheduled task reads this file, picks the **first row with status `pending`*
 | 5 | `genetik laboratuvar` | `İzmir` | 2026-04-21 | 10 | 0 | 10 Outscraper → tüm 3 kontrol edildi ve zaten DB'de (Özel GENTAN, İzmir Genetik, Mikrogen) → 0 yeni, 0 cold_ready |
 | 6 | `klinik laboratuvar` | `Bayraklı İzmir` | 2026-05-01 | 1 | 0 | 1 Outscraper → zaten DB'de (Talatpaşa Laboratuvarlar Grubu) → 0 yeni, 0 cold_ready |
 | 7 | `tıbbi cihaz` | `Bornova İzmir` | 2026-05-04 | 50 | 25 | 50 Outscraper → 2 URL dedup → 48 new → 25 cold_ready (avg 9/10, Bornova tech district) |
+| 8 | `medikal cihaz` | `Konak İzmir` | 2026-05-04 | 50 | 17 | 50 Outscraper → 19 exact dedup → 31 new → 17 hard filter (website required) → 17 cold_ready (avg 8.3/10, Konak district) |
 
 ---
 
@@ -61,7 +62,7 @@ The scheduled task reads this file, picks the **first row with status `pending`*
 | Month | Runs | Records Used | Free Tier Remaining | Notes |
 |-------|------|-------------|---------------------|-------|
 | April 2026 | 5 | 150 | 350 | Run 1: error (network). Run 2: 50 records, 5 cold_ready. Run 3: 50 records, 25 cold_ready. Run 4: 50 records, 46 cold_ready. Run 5: 10 records, 0 new (all duplicates). |
-| May 2026 | 2 | 51 | 449 | Run 1: 1 record, 0 new (dedup). Run 2: 50 records, 25 cold_ready. |
+| May 2026 | 3 | 101 | 399 | Run 1: 1 record, 0 new (dedup). Run 2: 50 records, 25 cold_ready. Run 3: 50 records, 17 cold_ready. |
 
 ---
 
