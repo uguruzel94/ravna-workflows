@@ -28,7 +28,7 @@ The scheduled task reads this file, picks the **first row with status `pending`*
 | 3 | `tıbbi cihaz` | `Konak İzmir` | 25 | done | 2026-04-07 | Medical device distributors, highest SMB density |
 | 4 | `tıbbi cihaz` | `Alsancak İzmir` | 25 | done | 2026-04-17 | 50 Outscraper → 46 after dedup → 46 cold_ready (score 9/10 avg). 138 AI opportunities. 46 emails drafted. Supabase ✅ |
 | 5 | `genetik laboratuvar` | `İzmir` | 25 | done | 2026-04-21 | 10 Outscraper sonucu → 10 zaten DB'de (Özel GENTAN, İzmir Genetik, Mikrogen) → 0 yeni |
-| 6 | `klinik laboratuvar` | `Bayraklı İzmir` | 25 | pending | — | Emerging CBD, 21+ medical companies confirmed |
+| 6 | `klinik laboratuvar` | `Bayraklı İzmir` | 25 | done | 2026-05-01 | 1 Outscraper sonucu → 1 zaten DB'de (Talatpaşa Laboratuvarlar Grubu) → 0 yeni |
 | 7 | `tıbbi cihaz` | `Bornova İzmir` | 25 | pending | — | Medical device in university hospital district |
 | 8 | `medikal cihaz` | `Konak İzmir` | 25 | pending | — | Keyword variant — surfaces different registered businesses |
 | 9 | `medikal cihaz` | `Alsancak İzmir` | 25 | pending | — | Variant in port-facing trade district |
@@ -51,6 +51,7 @@ The scheduled task reads this file, picks the **first row with status `pending`*
 | 3 | `tıbbi cihaz` | `Konak İzmir` | 2026-04-07 | 50 | 25 | 50 Outscraper → 32 hard filters geçti → 25 cold_ready (10x score=10, 15x score=9, avg score=9.4) |
 | 4 | `tıbbi cihaz` | `Alsancak İzmir` | 2026-04-17 | 50 | 46 | 50 Outscraper → 4 fuzzy dedup (By Medicus, Önder, Dor-Med, Protek) → 46 cold_ready (avg 9/10, 138 AI opps, 46 emails drafted, Supabase ✅) |
 | 5 | `genetik laboratuvar` | `İzmir` | 2026-04-21 | 10 | 0 | 10 Outscraper → tüm 3 kontrol edildi ve zaten DB'de (Özel GENTAN, İzmir Genetik, Mikrogen) → 0 yeni, 0 cold_ready |
+| 6 | `klinik laboratuvar` | `Bayraklı İzmir` | 2026-05-01 | 1 | 0 | 1 Outscraper → zaten DB'de (Talatpaşa Laboratuvarlar Grubu) → 0 yeni, 0 cold_ready |
 
 ---
 
@@ -59,7 +60,7 @@ The scheduled task reads this file, picks the **first row with status `pending`*
 | Month | Runs | Records Used | Free Tier Remaining | Notes |
 |-------|------|-------------|---------------------|-------|
 | April 2026 | 5 | 150 | 350 | Run 1: error (network). Run 2: 50 records, 5 cold_ready. Run 3: 50 records, 25 cold_ready. Run 4: 50 records, 46 cold_ready. Run 5: 10 records, 0 new (all duplicates). |
-| May 2026 | 0 | 0 | 500 | — |
+| May 2026 | 1 | 1 | 499 | Run 1: 1 Outscraper record, 0 new (dedup). |
 
 ---
 
