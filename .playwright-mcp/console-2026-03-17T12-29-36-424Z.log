@@ -1,0 +1,2 @@
+[     405ms] TypeError: e.stop is not a function
+    at https://www.medintek.com.tr/vendor/slider/responsiveslides.min.js:6:126

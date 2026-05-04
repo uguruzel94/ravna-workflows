@@ -1,0 +1,8 @@
+[       4ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://www.serdis.com.tr/manifest.json:0
+[       4ms] [ERROR] Manifest fetch from https://www.serdis.com.tr/manifest.json failed, code 404 @ https://www.serdis.com.tr/:0
+[     374ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ https://www.medintek.com.tr/vendor/owlcarousel/assets/owlcarousel/owl.theme.default.min.css:0
+[     393ms] [ERROR] Mixed Content: The page at 'https://www.medintek.com.tr/' was loaded over HTTPS, but requested an insecure script 'http://ajax.googleapis.com/ajax/libs/jquery/3.0.0/jquery.min.js'. This request has been blocked; the content must be served over HTTPS. @ https://www.medintek.com.tr/:0
+[    1060ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ https://www.medintek.com.tr/resources/images/footerlogo.png:0
+[    1514ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ https://www.medintek.com.tr/favicon.ico:0
+[    4709ms] TypeError: e.stop is not a function
+    at https://www.medintek.com.tr/vendor/slider/responsiveslides.min.js:6:126

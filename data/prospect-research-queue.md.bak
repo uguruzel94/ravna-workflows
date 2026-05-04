@@ -55,7 +55,6 @@ The scheduled task reads this file, picks the **first row with status `pending`*
 | 7 | `tıbbi cihaz` | `Bornova İzmir` | 2026-05-04 | 50 | 25 | 50 Outscraper → 2 URL dedup → 48 new → 25 cold_ready (avg 9/10, Bornova tech district) |
 | 8 | `medikal cihaz` | `Konak İzmir` | 2026-05-04 | 50 | 17 | 50 Outscraper → 19 exact dedup → 31 new → 17 hard filter (website required) → 17 cold_ready (avg 8.3/10, Konak district) |
 
-| 9 | `medikal cihaz` | `Alsancak İzmir` | 2026-05-04 | 50 | 31 | 50 Outscraper → 0 exact dedup → 50 new → 33 hard filter pass → 31 cold_ready (avg 8/10, Alsancak port district)
 ---
 
 ## Month Budget Tracker
@@ -63,7 +62,7 @@ The scheduled task reads this file, picks the **first row with status `pending`*
 | Month | Runs | Records Used | Free Tier Remaining | Notes |
 |-------|------|-------------|---------------------|-------|
 | April 2026 | 5 | 150 | 350 | Run 1: error (network). Run 2: 50 records, 5 cold_ready. Run 3: 50 records, 25 cold_ready. Run 4: 50 records, 46 cold_ready. Run 5: 10 records, 0 new (all duplicates). |
-| May 2026 | 4 | 151 | 349 | Run 1: 1 record, 0 new (dedup). Run 2: 50 records, 25 cold_ready. Run 3: 50 records, 17 cold_ready. |
+| May 2026 | 3 | 101 | 399 | Run 1: 1 record, 0 new (dedup). Run 2: 50 records, 25 cold_ready. Run 3: 50 records, 17 cold_ready. |
 
 ---
 
